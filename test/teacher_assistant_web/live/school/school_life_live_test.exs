@@ -143,6 +143,29 @@ defmodule TeacherAssistantWeb.School.SchoolLifeLiveTest do
     assert view |> element("#slot-#{ctx.cg.id}-#{ctx.p2.id}") |> render() =~ "Appel fait"
   end
 
+  test "Ma journée keeps the unsaved roll on the phone and takes it back after a reconnect",
+       %{conn: conn} = ctx do
+    path = ~p"/school/today?#{[slot: "#{ctx.cg.id}-#{ctx.p2.id}"]}"
+    {:ok, view, _} = live(conn, path)
+    view |> element("#att-#{ctx.e.id}-late") |> render_click()
+    assert_push_event(view, "roll-draft:save", %{key: key, draft: draft})
+
+    {:ok, view, _} = live(conn, path)
+    assert has_element?(view, "#roll-counts", "0 retard")
+
+    render_hook(view, "restore_draft", %{
+      "key" => key,
+      "draft" => draft |> Jason.encode!() |> Jason.decode!()
+    })
+
+    assert has_element?(view, "#roll-counts", "1 retard")
+    assert has_element?(view, "#roll-draft-restored")
+
+    view |> element("#record-roll") |> render_click()
+    assert_push_event(view, "roll-draft:clear", %{key: ^key})
+    assert roll_status(ctx.scope, ctx.cg, ctx.p2, ctx.e) == :late
+  end
+
   # A2: Cours 2 and Cours 3 are the same lesson back to back; Cours 1 is already taken.
   defp place_third_hour(ctx) do
     [_, _, p3 | _] = ctx.scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))

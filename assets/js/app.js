@@ -29,6 +29,7 @@ import {ExamCard, ExamPhotos} from "./hooks/exam_photos"
 import {DirtyForm} from "./hooks/dirty_form"
 import {ScrollActiveTab} from "./hooks/scroll_active_tab"
 import {TimetableDrop} from "./hooks/timetable_drop"
+import {RollDraft} from "./hooks/roll_draft"
 
 const setTheme = (theme) => {
   if (theme === "system") {
@@ -59,6 +60,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     DirtyForm,
     ScrollActiveTab,
     TimetableDrop,
+    RollDraft,
   },
 })
 

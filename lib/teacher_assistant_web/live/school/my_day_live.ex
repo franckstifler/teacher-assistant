@@ -142,13 +142,20 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
   defp open_error(reason), do: RollCall.error_message(reason)
 
   def handle_event("all_present", _params, socket),
-    do: {:noreply, update(socket, :roll, &(&1 && RollCall.all_present(&1)))}
+    do: {:noreply, RollCall.change(socket, &RollCall.all_present/1)}
 
   def handle_event("minutes", %{"minutes" => minutes}, socket),
-    do: {:noreply, update(socket, :roll, &(&1 && RollCall.set_minutes(&1, minutes)))}
+    do: {:noreply, RollCall.change(socket, &RollCall.set_minutes(&1, minutes))}
 
   def handle_event("set", %{"enrollment_id" => id, "status" => status}, socket),
-    do: {:noreply, update(socket, :roll, &(&1 && RollCall.toggle(&1, id, status)))}
+    do: {:noreply, RollCall.change(socket, &RollCall.toggle(&1, id, status))}
+
+  # The browser's unsaved roll, handed back after a reconnect or a reload.
+  def handle_event("restore_draft", params, socket),
+    do: {:noreply, RollCall.restore_draft(socket, params)}
+
+  def handle_event("discard_draft", _params, socket),
+    do: {:noreply, RollCall.discard_draft(socket)}
 
   def handle_event("toggle_following", _params, socket),
     do: {:noreply, update(socket, :roll, &(&1 && RollCall.toggle_following(&1)))}
@@ -204,6 +211,7 @@ defmodule TeacherAssistantWeb.School.MyDayLive do
         {:noreply,
          socket
          |> assign(:roll, roll)
+         |> RollCall.clear_draft()
          |> load_day()
          |> put_flash(:info, gettext("Appel enregistré"))}
 

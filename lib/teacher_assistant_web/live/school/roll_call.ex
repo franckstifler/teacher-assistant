@@ -74,7 +74,8 @@ defmodule TeacherAssistantWeb.School.RollCall do
             moved?: moved?,
             # A2: only a page that shows the « aussi pour la 2e heure » box may
             # write the following hours (Ma journée); a moved lesson has no 2e heure.
-            offer_following?: Keyword.get(opts, :following, false) and not moved?
+            offer_following?: Keyword.get(opts, :following, false) and not moved?,
+            draft_key: draft_key(scope, cg, course, teaching_context, period, date)
           }
 
           {:ok, scope |> reload(roll) |> put_adjacent(scope) |> put_moved_from(scope)}
@@ -292,12 +293,7 @@ defmodule TeacherAssistantWeb.School.RollCall do
 
         case result do
           {:ok, _count} ->
-            {:ok,
-             scope
-             |> reload(roll)
-             |> put_adjacent(scope)
-             |> put_moved_from(scope)
-             |> Map.put(:saved_periods, 1 + length(following))}
+            {:ok, scope |> refresh(roll) |> Map.put(:saved_periods, 1 + length(following))}
 
           {:error, %Ash.Error.Forbidden{}} ->
             {:error, :forbidden}
@@ -311,6 +307,97 @@ defmodule TeacherAssistantWeb.School.RollCall do
         end
     end
   end
+
+  # The roll as saved, without what the page added on top of it.
+  defp refresh(scope, roll) do
+    scope
+    |> reload(Map.delete(roll, :restored_draft?))
+    |> put_adjacent(scope)
+    |> put_moved_from(scope)
+  end
+
+  # --- the phone's draft --------------------------------------------------------
+  #
+  # The taps live in the LiveView process until « Valider l'appel ». A locked phone
+  # or a dropped network ends that process, and the page that comes back reloads the
+  # saved roll: each change is therefore also handed to the browser (the `RollDraft`
+  # hook keeps it in localStorage), which hands it back on reconnect or reload, until
+  # the roll is recorded or the draft ignored.
+
+  defp draft_key(scope, cg, course, teaching_context, period, date) do
+    unit =
+      case course do
+        %CombinedCourse{id: id} -> "course-#{id}"
+        nil -> "#{cg.id}-#{teaching_context && teaching_context.id}"
+      end
+
+    Enum.join(["roll-draft", scope.current_user.id, unit, period.id, Date.to_iso8601(date)], ":")
+  end
+
+  @doc """
+  Applies `fun` to the open roll (none open: nothing) and hands the browser the
+  unsaved roll — every roll-call change goes through here.
+  """
+  def change(%{assigns: %{roll: nil}} = socket, _fun), do: socket
+
+  def change(socket, fun) do
+    roll = fun.(socket.assigns.roll)
+
+    socket
+    |> Phoenix.Component.assign(:roll, roll)
+    |> Phoenix.LiveView.push_event("roll-draft:save", %{key: roll.draft_key, draft: draft(roll)})
+  end
+
+  defp draft(roll) do
+    %{
+      marks: Map.new(roll.marks, fn {id, status} -> {id, Atom.to_string(status)} end),
+      minutes: for({id, minutes} <- roll.minutes, minutes != nil, into: %{}, do: {id, minutes})
+    }
+  end
+
+  @doc """
+  The `restore_draft` event: the browser's draft of the open roll, re-applied through
+  `set/3` (unknown students and statuses are ignored). A draft that changes something
+  puts up the « non enregistré » notice; a draft of another roll changes nothing.
+  """
+  def restore_draft(
+        %{assigns: %{roll: %{draft_key: key} = roll}} = socket,
+        %{"key" => key, "draft" => %{} = draft}
+      ) do
+    restored = apply_draft(roll, draft)
+    changed? = restored.marks != roll.marks or restored.minutes != roll.minutes
+
+    Phoenix.Component.assign(
+      socket,
+      :roll,
+      Map.put(restored, :restored_draft?, roll[:restored_draft?] == true or changed?)
+    )
+  end
+
+  def restore_draft(socket, _params), do: socket
+
+  defp apply_draft(roll, draft) do
+    marks = if is_map(draft["marks"]), do: draft["marks"], else: %{}
+    minutes = if is_map(draft["minutes"]), do: draft["minutes"], else: %{}
+
+    roll = Enum.reduce(marks, roll, fn {id, status}, roll -> set(roll, id, status) end)
+    set_minutes(roll, Map.filter(minutes, fn {id, _} -> roll.marks[id] == :late end))
+  end
+
+  @doc "« Ignorer »: back to the saved roll, and the browser forgets its draft."
+  def discard_draft(%{assigns: %{roll: %{} = roll, current_scope: scope}} = socket) do
+    socket
+    |> Phoenix.Component.assign(:roll, refresh(scope, roll))
+    |> clear_draft()
+  end
+
+  def discard_draft(socket), do: socket
+
+  @doc "Once the roll is recorded, the browser forgets its draft."
+  def clear_draft(%{assigns: %{roll: %{draft_key: key}}} = socket),
+    do: Phoenix.LiveView.push_event(socket, "roll-draft:clear", %{key: key})
+
+  def clear_draft(socket), do: socket
 
   @doc "Flips « aussi pour la 2e heure » (A2)."
   def toggle_following(roll), do: Map.update(roll, :record_following, false, &(not &1))
@@ -577,7 +664,12 @@ defmodule TeacherAssistantWeb.School.RollCall do
 
   def roll_panel(assigns) do
     ~H"""
-    <div id="roll-panel" class="ta-panel flex flex-col !p-0 shadow-[0_6px_20px_oklch(0%_0_0/0.16)]">
+    <div
+      id="roll-panel"
+      phx-hook="RollDraft"
+      data-draft-key={@roll.draft_key}
+      class="ta-panel flex flex-col !p-0 shadow-[0_6px_20px_oklch(0%_0_0/0.16)]"
+    >
       <div :if={@title} class="flex items-start justify-between gap-2 px-4 pt-4 sm:px-[18px]">
         <div class="min-w-0">
           <p :if={@eyebrow} class="ta-eyebrow">{@eyebrow}</p>
@@ -615,6 +707,26 @@ defmodule TeacherAssistantWeb.School.RollCall do
           label: @roll.prefilled_from.label
         )}
       </p>
+
+      <div
+        :if={@roll[:restored_draft?]}
+        id="roll-draft-restored"
+        role="status"
+        class="mx-4 mt-3 flex items-start gap-2 rounded-box border border-warning/40 bg-warning/12 px-3 py-2 text-[0.82rem] sm:mx-[18px]"
+      >
+        <.icon name="hero-device-phone-mobile" class="mt-0.5 size-4 shrink-0 text-warning" />
+        <p class="flex-1">
+          {gettext("Appel non enregistré retrouvé sur ce téléphone. Vérifiez-le, puis enregistrez.")}
+        </p>
+        <button
+          id="roll-draft-discard"
+          type="button"
+          phx-click="discard_draft"
+          class="btn btn-ghost btn-xs min-h-9 shrink-0 sm:min-h-0"
+        >
+          {gettext("Ignorer")}
+        </button>
+      </div>
 
       <div class="flex items-start justify-between gap-3 px-4 pt-3 sm:px-[18px]">
         <p id="roll-help" class="text-[0.82rem] text-base-content/70">

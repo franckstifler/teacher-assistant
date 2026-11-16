@@ -57,13 +57,20 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
   end
 
   def handle_event("all_present", _params, socket),
-    do: {:noreply, update(socket, :roll, &(&1 && RollCall.all_present(&1)))}
+    do: {:noreply, RollCall.change(socket, &RollCall.all_present/1)}
 
   def handle_event("minutes", %{"minutes" => minutes}, socket),
-    do: {:noreply, update(socket, :roll, &(&1 && RollCall.set_minutes(&1, minutes)))}
+    do: {:noreply, RollCall.change(socket, &RollCall.set_minutes(&1, minutes))}
 
   def handle_event("set", %{"enrollment_id" => id, "status" => status}, socket),
-    do: {:noreply, update(socket, :roll, &RollCall.toggle(&1, id, status))}
+    do: {:noreply, RollCall.change(socket, &RollCall.toggle(&1, id, status))}
+
+  # The browser's unsaved roll, handed back after a reconnect or a reload.
+  def handle_event("restore_draft", params, socket),
+    do: {:noreply, RollCall.restore_draft(socket, params)}
+
+  def handle_event("discard_draft", _params, socket),
+    do: {:noreply, RollCall.discard_draft(socket)}
 
   # « À la place de » (spec 2026-11-12), shown when the roll call is held outside the
   # teacher's slot.
@@ -73,7 +80,11 @@ defmodule TeacherAssistantWeb.School.AttendanceLive do
   def handle_event("record", _params, socket) do
     case RollCall.record(socket.assigns.current_scope, socket.assigns.roll) do
       {:ok, roll} ->
-        {:noreply, socket |> assign(:roll, roll) |> put_flash(:info, gettext("Appel enregistré"))}
+        {:noreply,
+         socket
+         |> assign(:roll, roll)
+         |> RollCall.clear_draft()
+         |> put_flash(:info, gettext("Appel enregistré"))}
 
       {:error, reason} ->
         {:noreply, RollCall.put_error(socket, reason)}

@@ -585,4 +585,119 @@ defmodule TeacherAssistantWeb.School.AttendanceLiveTest do
     assert has_element?(view, "#student-row-#{e.id}[data-status='absent']")
     refute has_element?(view, "#late-minutes-#{e.id}")
   end
+
+  describe "the phone's draft of an unsaved roll" do
+    # What the browser hands back: the pushed draft after a JSON round trip.
+    defp client_draft(draft), do: draft |> Jason.encode!() |> Jason.decode!()
+
+    test "each tap hands the browser the unsaved roll", ctx do
+      %{conn: conn, cg: cg, period: period, date: date, enrollment: e, head: head} = ctx
+      {:ok, view, _html} = live(conn, att_path(cg, period, date))
+
+      view |> element("#att-#{e.id}-late") |> render_click()
+      assert_push_event(view, "roll-draft:save", %{key: key, draft: %{marks: marks}})
+      assert marks[e.id] == "late"
+      assert key =~ "roll-draft:#{head.id}:#{cg.id}-"
+      assert key =~ ":#{period.id}:#{Date.to_iso8601(date)}"
+      assert has_element?(view, "#roll-panel[data-draft-key='#{key}']")
+
+      view
+      |> form("#late-minutes-form-#{e.id}", %{"minutes" => %{e.id => "25"}})
+      |> render_change()
+
+      assert_push_event(view, "roll-draft:save", %{draft: %{minutes: minutes}})
+      assert minutes == %{e.id => 25}
+    end
+
+    test "after a reconnect the draft comes back, unsaved, until recorded", ctx do
+      %{conn: conn, cg: cg, period: period, date: date, enrollment: e, scope: scope} = ctx
+      {:ok, view, _html} = live(conn, att_path(cg, period, date))
+      view |> element("#att-#{e.id}-late") |> render_click()
+      assert_push_event(view, "roll-draft:save", %{key: key, draft: draft})
+
+      # The phone slept: a new LiveView process starts from the saved roll.
+      {:ok, view, _html} = live(conn, att_path(cg, period, date))
+      assert has_element?(view, "#student-row-#{e.id}[data-status='present']")
+      refute has_element?(view, "#roll-draft-restored")
+
+      render_hook(view, "restore_draft", %{
+        "key" => key,
+        "draft" => client_draft(%{draft | minutes: %{e.id => 25}})
+      })
+
+      assert has_element?(view, "#student-row-#{e.id}[data-status='late']")
+      assert has_element?(view, "#late-minutes-#{e.id}[value='25']")
+      assert has_element?(view, "#roll-draft-restored")
+      assert %{students: [%{status: nil}]} = Attendance.period_roll(scope, cg, period, date)
+
+      view |> element("#record-roll") |> render_click()
+      assert_push_event(view, "roll-draft:clear", %{key: ^key})
+      refute has_element?(view, "#roll-draft-restored")
+
+      assert %{students: [%{status: :late, late_minutes: 25}]} =
+               Attendance.period_roll(scope, cg, period, date)
+    end
+
+    test "« Ignorer » goes back to the saved roll and forgets the draft", ctx do
+      %{conn: conn, cg: cg, period: period, date: date, enrollment: e} = ctx
+      {:ok, view, _html} = live(conn, att_path(cg, period, date))
+      key = view |> element("#roll-panel") |> render() |> draft_key()
+
+      render_hook(view, "restore_draft", %{
+        "key" => key,
+        "draft" => %{"marks" => %{e.id => "absent"}}
+      })
+
+      assert has_element?(view, "#student-row-#{e.id}[data-status='absent']")
+
+      view |> element("#roll-draft-discard") |> render_click()
+      assert_push_event(view, "roll-draft:clear", %{key: ^key})
+      assert has_element?(view, "#student-row-#{e.id}[data-status='present']")
+      refute has_element?(view, "#roll-draft-restored")
+    end
+
+    test "a draft of another roll, or with forged students and statuses, changes nothing",
+         ctx do
+      %{conn: conn, cg: cg, period: period, date: date, enrollment: e} = ctx
+      {:ok, view, _html} = live(conn, att_path(cg, period, date))
+      key = view |> element("#roll-panel") |> render() |> draft_key()
+
+      render_hook(view, "restore_draft", %{
+        "key" => key <> "x",
+        "draft" => %{"marks" => %{e.id => "absent"}}
+      })
+
+      render_hook(view, "restore_draft", %{
+        "key" => key,
+        "draft" => %{
+          "marks" => %{e.id => "expelled", Ecto.UUID.generate() => "absent"},
+          "minutes" => %{e.id => "30"}
+        }
+      })
+
+      render_hook(view, "restore_draft", %{"key" => key, "draft" => %{"marks" => "absent"}})
+
+      assert has_element?(view, "#student-row-#{e.id}[data-status='present']")
+      refute has_element?(view, "#late-minutes-#{e.id}")
+      refute has_element?(view, "#roll-draft-restored")
+    end
+
+    test "a draft equal to the saved roll puts up no notice", ctx do
+      %{conn: conn, cg: cg, period: period, date: date, enrollment: e} = ctx
+      {:ok, view, _html} = live(conn, att_path(cg, period, date))
+      key = view |> element("#roll-panel") |> render() |> draft_key()
+
+      render_hook(view, "restore_draft", %{
+        "key" => key,
+        "draft" => %{"marks" => %{e.id => "present"}}
+      })
+
+      refute has_element?(view, "#roll-draft-restored")
+    end
+
+    defp draft_key(html) do
+      [_, key] = Regex.run(~r/data-draft-key="([^"]+)"/, html)
+      key
+    end
+  end
 end
