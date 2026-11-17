@@ -55,3 +55,7 @@ Run the relevant member/profile/timetable tests and the repository-required mix 
 ## Review
 
 The design has been checked for incomplete requirements, scope conflicts and ambiguous workload semantics. The next step is the implementation plan after written-spec review, as required by the brainstorming workflow.
+
+## Approved additions (2026-11-17)
+
+The user approved three quick wins: expected versus assigned versus scheduled weekly service, contact call/copy shortcuts, and an individual teacher timetable print. This supersedes the earlier exclusion of an individual print endpoint. Scheduled hours follow the existing editor's school-period convention, with one combined lesson counted once. Show unplaced periods per assignment so overscheduling another subject cannot cancel a gap. Printing uses the existing teacher print layout and school module gate. The broader attention dashboard remains deferred.

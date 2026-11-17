@@ -15,6 +15,7 @@ defmodule TeacherAssistantWeb.Drawer do
   attr :eyebrow, :string, default: nil
   attr :title, :string, required: true
   attr :on_close, JS, default: %JS{}, doc: "run on Escape, the backdrop and the close button"
+  attr :wide, :boolean, default: false
   slot :inner_block, required: true
   slot :footer
 
@@ -48,7 +49,8 @@ defmodule TeacherAssistantWeb.Drawer do
         class={[
           "absolute flex w-full flex-col bg-base-100 shadow-2xl",
           "inset-x-0 bottom-0 max-h-[92dvh] rounded-t-2xl border-t border-base-300",
-          "sm:inset-x-auto sm:inset-y-0 sm:right-0 sm:max-h-none sm:max-w-md sm:rounded-none sm:border-l sm:border-t-0"
+          "sm:inset-x-auto sm:inset-y-0 sm:right-0 sm:max-h-none sm:rounded-none sm:border-l sm:border-t-0",
+          if(@wide, do: "sm:max-w-3xl lg:max-w-5xl", else: "sm:max-w-md")
         ]}
       >
         <span

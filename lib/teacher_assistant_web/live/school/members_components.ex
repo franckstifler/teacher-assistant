@@ -10,6 +10,7 @@ defmodule TeacherAssistantWeb.School.MembersComponents do
   alias TeacherAssistant.Accounts.{MembershipStatus, SchoolRole, User}
   alias TeacherAssistantWeb.Dates
 
+  import TeacherAssistantWeb.School.MemberProfileComponents
   import TeacherAssistantWeb.Drawer
   import TeacherAssistantWeb.Modal
 
@@ -295,10 +296,16 @@ defmodule TeacherAssistantWeb.School.MembersComponents do
   attr :can_set_service?, :boolean, required: true
   attr :roles, :list, required: true, doc: "the roles ticked in `form`"
 
+  attr :profile, :any, required: true
+  attr :tab, :string, required: true
+  attr :day, :atom, default: nil
+  attr :show_timetable?, :boolean, required: true
+
   def member_drawer(assigns) do
     ~H"""
     <.drawer
       id="member-drawer"
+      wide
       eyebrow={gettext("Membre")}
       title={User.display_name(@member.user)}
       on_close={JS.push("close_drawer")}
@@ -315,97 +322,109 @@ defmodule TeacherAssistantWeb.School.MembersComponents do
         </div>
       </div>
 
-      <div :if={@error} id="member-error" role="alert" class="alert alert-error alert-soft">
-        <.icon name="hero-exclamation-triangle" class="size-5" />
-        <span>{@error}</span>
-      </div>
-
-      <.form for={@form} id="member-form" phx-submit="save_member" class="space-y-4">
-        <input type="hidden" name="member_id" value={@member.id} />
-        <.input
-          :if={@renamable?}
-          field={@form[:name]}
-          id="member-name"
-          label={gettext("Nom et prénom")}
-          autocomplete="off"
-        />
-        <%= if @can_manage_staff? do %>
-          <%!-- an empty value keeps « roles » in the params when every chip is off --%>
-          <input type="hidden" name="member[roles][]" value="" />
-          <.role_chips name="member[roles][]" checked={@roles} />
-          <.input
-            field={@form[:status]}
-            type="select"
-            label={gettext("Statut d'emploi")}
-            prompt={gettext("Non précisé")}
-            options={membership_status_options()}
-          />
-        <% end %>
-        <div :if={@can_set_service?} class="space-y-1">
-          <label for="member-service" class="label text-sm">
-            {gettext("Service hebdomadaire")}
-          </label>
-          <div class="sm:[&>label]:ml-0">
-            <.unit_input
-              id="member-service"
-              name={@form[:service].name}
-              value={@form[:service].value}
-              unit={gettext("h/sem.")}
-              placeholder={gettext("École")}
-              inputmode="numeric"
-            />
-          </div>
-          <p
-            :for={{msg, _opts} <- Keyword.get_values(@form.errors, :service)}
-            id="member-service-error"
-            class="flex items-center gap-2 text-sm text-error"
-          >
-            <.icon name="hero-exclamation-circle" class="size-5" />{msg}
-          </p>
-          <p class="text-xs text-base-content/70">
-            {gettext("Laissez vide pour appliquer le service par défaut de l'école.")}
-          </p>
-        </div>
-      </.form>
-
+      <.contact_actions member={@member} />
+      <.profile_tabs tab={@tab} timetable?={@show_timetable?} />
+      <.academic_panels profile={@profile} member={@member} tab={@tab} day={@day} />
       <section
-        :if={@can_manage_staff? and @state}
-        id="member-account"
-        class="space-y-2 border-t border-base-300 pt-4"
+        id="member-panel-settings"
+        role="tabpanel"
+        aria-labelledby="member-tab-settings"
+        hidden={@tab != "settings"}
+        tabindex="0"
+        class="space-y-4"
       >
-        <h3 class="text-sm font-semibold">{gettext("Compte")}</h3>
-        <.account_state state={@state} />
-        <p class="text-sm text-base-content/70">{@state.note}</p>
-        <button
-          :if={@resettable?}
-          id={"reset-password-#{@member.id}"}
-          type="button"
-          class="btn btn-ghost min-h-11"
-          phx-click="ask_reset_password"
-          phx-value-id={@member.id}
-        >
-          <.icon name="hero-key" class="size-4" />
-          {gettext("Réinitialiser le mot de passe")}
-        </button>
-      </section>
+        <div :if={@error} id="member-error" role="alert" class="alert alert-error alert-soft">
+          <.icon name="hero-exclamation-triangle" class="size-5" />
+          <span>{@error}</span>
+        </div>
 
-      <section :if={@can_manage_staff?} class="space-y-2 border-t border-base-300 pt-4">
-        <p class="text-sm text-base-content/70">
-          {gettext(
-            "Un membre désactivé n'a plus accès à l'école. Ses notes et son historique sont conservés."
-          )}
-        </p>
-        <button
-          id={"member-deactivate-#{@member.id}"}
-          type="button"
-          class="btn btn-ghost min-h-11 text-error"
-          phx-click="deactivate_member"
-          phx-value-id={@member.id}
-          data-confirm={gettext("Désactiver ce membre ?")}
+        <.form for={@form} id="member-form" phx-submit="save_member" class="space-y-4">
+          <input type="hidden" name="member_id" value={@member.id} />
+          <.input
+            :if={@renamable?}
+            field={@form[:name]}
+            id="member-name"
+            label={gettext("Nom et prénom")}
+            autocomplete="off"
+          />
+          <%= if @can_manage_staff? do %>
+            <%!-- an empty value keeps « roles » in the params when every chip is off --%>
+            <input type="hidden" name="member[roles][]" value="" />
+            <.role_chips name="member[roles][]" checked={@roles} />
+            <.input
+              field={@form[:status]}
+              type="select"
+              label={gettext("Statut d'emploi")}
+              prompt={gettext("Non précisé")}
+              options={membership_status_options()}
+            />
+          <% end %>
+          <div :if={@can_set_service?} class="space-y-1">
+            <label for="member-service" class="label text-sm">
+              {gettext("Service hebdomadaire")}
+            </label>
+            <div class="sm:[&>label]:ml-0">
+              <.unit_input
+                id="member-service"
+                name={@form[:service].name}
+                value={@form[:service].value}
+                unit={gettext("h/sem.")}
+                placeholder={gettext("École")}
+                inputmode="numeric"
+              />
+            </div>
+            <p
+              :for={{msg, _opts} <- Keyword.get_values(@form.errors, :service)}
+              id="member-service-error"
+              class="flex items-center gap-2 text-sm text-error"
+            >
+              <.icon name="hero-exclamation-circle" class="size-5" />{msg}
+            </p>
+            <p class="text-xs text-base-content/70">
+              {gettext("Laissez vide pour appliquer le service par défaut de l'école.")}
+            </p>
+          </div>
+        </.form>
+
+        <section
+          :if={@can_manage_staff? and @state}
+          id="member-account"
+          class="space-y-2 border-t border-base-300 pt-4"
         >
-          <.icon name="hero-user-minus" class="size-4" />
-          {gettext("Désactiver ce membre")}
-        </button>
+          <h3 class="text-sm font-semibold">{gettext("Compte")}</h3>
+          <.account_state state={@state} />
+          <p class="text-sm text-base-content/70">{@state.note}</p>
+          <button
+            :if={@resettable?}
+            id={"reset-password-#{@member.id}"}
+            type="button"
+            class="btn btn-ghost min-h-11"
+            phx-click="ask_reset_password"
+            phx-value-id={@member.id}
+          >
+            <.icon name="hero-key" class="size-4" />
+            {gettext("Réinitialiser le mot de passe")}
+          </button>
+        </section>
+
+        <section :if={@can_manage_staff?} class="space-y-2 border-t border-base-300 pt-4">
+          <p class="text-sm text-base-content/70">
+            {gettext(
+              "Un membre désactivé n'a plus accès à l'école. Ses notes et son historique sont conservés."
+            )}
+          </p>
+          <button
+            id={"member-deactivate-#{@member.id}"}
+            type="button"
+            class="btn btn-ghost min-h-11 text-error"
+            phx-click="deactivate_member"
+            phx-value-id={@member.id}
+            data-confirm={gettext("Désactiver ce membre ?")}
+          >
+            <.icon name="hero-user-minus" class="size-4" />
+            {gettext("Désactiver ce membre")}
+          </button>
+        </section>
       </section>
 
       <:footer>
@@ -413,6 +432,7 @@ defmodule TeacherAssistantWeb.School.MembersComponents do
           {gettext("Fermer")}
         </button>
         <button
+          :if={@tab == "settings"}
           type="submit"
           form="member-form"
           class="btn btn-primary"

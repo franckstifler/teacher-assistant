@@ -29,6 +29,7 @@ import {ExamCard, ExamPhotos} from "./hooks/exam_photos"
 import {DirtyForm} from "./hooks/dirty_form"
 import {ScrollActiveTab} from "./hooks/scroll_active_tab"
 import {TimetableDrop} from "./hooks/timetable_drop"
+import {MemberProfileTabs} from "./hooks/member_profile_tabs"
 import {RollDraft} from "./hooks/roll_draft"
 
 const setTheme = (theme) => {
@@ -61,6 +62,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ScrollActiveTab,
     TimetableDrop,
     RollDraft,
+    MemberProfileTabs,
   },
 })
 
@@ -164,3 +166,14 @@ if (process.env.NODE_ENV === "development") {
     window.liveReloader = reloader
   })
 }
+
+// A member's phone number: report the actual clipboard outcome, including denial.
+window.addEventListener("phx:copy-contact", async ({detail}) => {
+  const status = document.getElementById("member-copy-status")
+  try {
+    await navigator.clipboard.writeText(detail.text)
+    if (status?.isConnected) status.textContent = detail.success
+  } catch {
+    if (status?.isConnected) status.textContent = detail.failure
+  }
+})

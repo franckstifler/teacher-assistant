@@ -120,6 +120,7 @@ defmodule TeacherAssistantWeb.Router do
     get "/teacher/class-lists/print", ClassListPrintController, :teacher_all
     get "/school/councils/:class_id/print", CouncilPrintController, :show
     get "/school/classes/:id/timetable/print", TimetablePrintController, :class
+    get "/school/members/:id/timetable/print", TimetablePrintController, :member
     get "/school/timetable/me/print", TimetablePrintController, :me
     get "/school/timetable/teachers/print", TimetablePrintController, :teachers
     get "/school/timetable/general/print", TimetablePrintController, :general

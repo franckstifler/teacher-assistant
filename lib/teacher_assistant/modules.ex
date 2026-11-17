@@ -72,6 +72,7 @@ defmodule TeacherAssistant.Modules do
     {W.EntryReportPrintController, :show} => :notes,
     {W.StudentPhotoController, :frozen} => :notes,
     {W.TimetablePrintController, :class} => :emploi_du_temps,
+    {W.TimetablePrintController, :member} => :emploi_du_temps,
     {W.TimetablePrintController, :me} => :emploi_du_temps,
     {W.TimetablePrintController, :teachers} => :emploi_du_temps,
     {W.TimetablePrintController, :general} => :emploi_du_temps,

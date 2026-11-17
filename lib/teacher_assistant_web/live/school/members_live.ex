@@ -4,12 +4,13 @@ defmodule TeacherAssistantWeb.School.MembersLive do
   contact, Rôles, Service, Accès) on wide screens, the list on phones; filter pills
   by role with counts and « Jamais connectés » (staff managers: `last_sign_in_at`
   still nil); a selection bar that copies the selected members' numbers. The
-  « Ajouter un membre » and member drawers, resets and invitations are unchanged.
+  member drawer includes teaching details and settings; administration keeps its permissions.
   """
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Accounts.{MembershipStatus, SchoolInvitation, SchoolRole, User}
   alias TeacherAssistant.{Accounts, Timetabling}
+  alias TeacherAssistant.Academics.TeacherProfile
   alias TeacherAssistantWeb.Dates
 
   import TeacherAssistantWeb.School.MembersComponents
@@ -35,6 +36,9 @@ defmodule TeacherAssistantWeb.School.MembersLive do
        |> assign(:panel, nil)
        |> assign(:add_method, :phone)
        |> assign(:add_error, nil)
+       |> assign(:member_profile, nil)
+       |> assign(:member_tab, "overview")
+       |> assign(:member_day, nil)
        |> assign(:editing, nil)
        |> assign(:member_form, nil)
        |> assign(:member_error, nil)
@@ -286,6 +290,10 @@ defmodule TeacherAssistantWeb.School.MembersLive do
         <.member_drawer
           :if={@panel == :member and @editing}
           member={@editing}
+          profile={@member_profile}
+          tab={@member_tab}
+          day={@member_day}
+          show_timetable?={show_member_timetable?(@scope, @editing, @member_profile)}
           form={@member_form}
           error={@member_error}
           state={@account_states[@editing.id]}
@@ -410,11 +418,38 @@ defmodule TeacherAssistantWeb.School.MembersLive do
         {:noreply,
          socket
          |> close_drawer()
-         |> assign(panel: :member, editing: m, member_form: member_form(m))}
+         |> assign(panel: :member, editing: m, member_form: member_form(m))
+         |> load_member_profile()}
 
       _ ->
         {:noreply, socket}
     end
+  end
+
+  def handle_event("member_tab", %{"tab" => tab}, socket) do
+    a = socket.assigns
+
+    if a.editing && tab in ["overview", "settings", "timetable"] &&
+         (tab != "timetable" || show_member_timetable?(a.scope, a.editing, a.member_profile)) do
+      {:noreply, assign(socket, :member_tab, tab)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("member_day", %{"day" => value}, socket) do
+    case socket.assigns.member_profile do
+      {:ok, profile} ->
+        day = Enum.find(profile.days, &(Atom.to_string(&1) == value))
+        {:noreply, if(day, do: assign(socket, :member_day, day), else: socket)}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("retry_member_profile", _params, socket) do
+    {:noreply, if(socket.assigns.editing, do: load_member_profile(socket), else: socket)}
   end
 
   # --- Events: adding a member ---------------------------------------------------------
@@ -716,11 +751,31 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
   # --- Drawers -------------------------------------------------------------------------
 
+  defp load_member_profile(socket) do
+    profile = TeacherProfile.load(socket.assigns.scope, socket.assigns.editing)
+
+    day =
+      case profile do
+        {:ok, data} -> List.first(data.days)
+        _ -> nil
+      end
+
+    assign(socket, member_profile: profile, member_day: day)
+  end
+
+  defp show_member_timetable?(scope, member, profile) do
+    TeacherAssistant.Scope.module?(scope, :emploi_du_temps) &&
+      (:teacher in member.roles || match?({:ok, %{teaching?: true}}, profile))
+  end
+
   defp close_drawer(socket) do
     assign(socket,
       panel: nil,
       add_error: nil,
       editing: nil,
+      member_profile: nil,
+      member_tab: "overview",
+      member_day: nil,
       member_form: nil,
       member_error: nil
     )

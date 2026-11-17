@@ -96,6 +96,74 @@ defmodule TeacherAssistantWeb.TimetablePrintControllerTest do
     assert html =~ "Salle B12"
   end
 
+  describe "individual member timetable" do
+    test "prints only the selected member", %{conn: conn, school: school, cg: cg, head: head} do
+      scope = school_scope(head, school)
+      zoe = TeacherAssistant.TeacherFixtures.user_fixture(%{name: "Zoé Profile"})
+
+      %{teaching_context: tc, membership: member} =
+        TeacherAssistant.TeacherFixtures.school_teacher_fixture(scope, %{
+          teacher: zoe,
+          class_group: cg,
+          subject: "SVT Profile"
+        })
+
+      p = Enum.find(Attendance.list_periods(scope), &(&1.kind == :lesson))
+
+      {:ok, _} =
+        Timetabling.place_slot(scope, cg, %{
+          day: :tuesday,
+          period_id: p.id,
+          teaching_context_id: tc.id
+        })
+
+      html = conn |> get(~p"/school/members/#{member.id}/timetable/print") |> html_response(200)
+      assert html =~ "Zoé Profile"
+      assert html =~ "SVT Profile"
+      refute html =~ "Maths"
+      assert length(Regex.scan(~r/<section class="sheet"/, html)) == 1
+    end
+
+    test "censeur can print; ordinary teacher cannot", %{conn: conn, school: school, head: head} do
+      scope = school_scope(head, school)
+      {:ok, member} = Accounts.fetch_school_membership(scope, head)
+
+      for {role, status} <- [{:vice_principal, 200}, {:teacher, 302}] do
+        viewer = TeacherAssistant.TeacherFixtures.member_scope_fixture(scope, %{roles: [role]})
+
+        result =
+          conn
+          |> recycle()
+          |> log_in_user(viewer.current_user)
+          |> Plug.Conn.put_session(:workspace_id, school.id)
+          |> get(~p"/school/members/#{member.id}/timetable/print")
+
+        assert result.status == status
+      end
+    end
+
+    test "foreign and malformed membership IDs are rejected", %{conn: conn, head: head} do
+      {:ok, foreign_school} =
+        Organization.create_school(%TeacherAssistant.Scope{current_user: head}, %{
+          name: "Foreign profile"
+        })
+
+      {:ok, foreign} = Accounts.fetch_school_membership(school_scope(head, foreign_school), head)
+
+      for id <- [foreign.id, "invalid", Ash.UUID.generate()] do
+        result = conn |> recycle() |> get(~p"/school/members/#{id}/timetable/print")
+        assert redirected_to(result) == "/school"
+      end
+    end
+
+    test "individual printing belongs to the timetable module" do
+      assert TeacherAssistant.Modules.module_for_controller(
+               TeacherAssistantWeb.TimetablePrintController,
+               :member
+             ) == :emploi_du_temps
+    end
+  end
+
   describe "every teacher's timetable" do
     test "prints one sheet per teacher", %{conn: conn, school: school, cg: cg, head: head} do
       scope = school_scope(head, school)

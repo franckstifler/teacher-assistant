@@ -26,6 +26,23 @@ defmodule TeacherAssistantWeb.TimetablePrintController do
     end
   end
 
+  def member(conn, %{"id" => id}) do
+    with %{current_workspace: %{}, current_academic_year: %{}} = scope <-
+           conn.assigns.current_scope,
+         true <- TeacherAssistant.Academics.TeacherProfile.allowed?(scope),
+         %{} = member <- Enum.find(TeacherAssistant.Accounts.list_members(scope), &(&1.id == id)) do
+      title = User.display_name(member.user)
+      grid = Timetabling.teacher_timetable(scope, member.user)
+
+      conn
+      |> put_layout(false)
+      |> put_root_layout(false)
+      |> render(:show, frame(scope, :teacher, title, [%{title: title, grid: grid}]))
+    else
+      _ -> redirect(conn, to: ~p"/school")
+    end
+  end
+
   def me(conn, _params) do
     with %{current_workspace: %{}} = scope <- conn.assigns.current_scope do
       title = User.display_name(scope.current_user)
