@@ -135,6 +135,7 @@ defmodule TeacherAssistant.Academics.Assessment do
       argument :label, :string, allow_nil?: false
       argument :assessment_type_id, :uuid, allow_nil?: true
       argument :max_score, :decimal, allow_nil?: true
+      argument :given_on, :date, allow_nil?: true
 
       transaction? true
 
@@ -145,6 +146,7 @@ defmodule TeacherAssistant.Academics.Assessment do
           %{label: label}
           |> put_present(:assessment_type_id, input.arguments[:assessment_type_id])
           |> put_present(:max_score, input.arguments[:max_score])
+          |> put_present(:given_on, input.arguments[:given_on])
 
         contexts = course_member_contexts(course, scope)
 

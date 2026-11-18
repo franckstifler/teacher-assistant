@@ -116,6 +116,23 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
              |> live(~p"/school/sequences?seq=#{c.seq.id}&view=students")
   end
 
+  test "a missing assessment opens its class and course detail", c do
+    {:ok, view, _} = live(c.conn, ~p"/school/sequences?seq=#{c.seq.id}&view=students")
+    target = "#missing-students-report details li a"
+    view |> element(target, "Maths · Devoir 1") |> render_click()
+    assert has_element?(view, "#view-classes[aria-current]")
+    assert has_element?(view, "#cell-detail", "3e A · Maths")
+    assert has_element?(view, "#cell-detail #remind-course[phx-value-tc='#{c.tc.id}']")
+
+    {:ok, _, html} =
+      live(
+        c.conn,
+        ~p"/school/sequences?seq=#{c.seq.id}&view=classes&course=#{Ash.UUID.generate()}"
+      )
+
+    assert html =~ "Suivi de la saisie"
+  end
+
   test "the censorat lands on the teacher table, under four figures", %{conn: conn} = ctx do
     {:ok, view, html} = live(conn, ~p"/school/sequences")
 

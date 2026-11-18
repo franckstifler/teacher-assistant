@@ -358,6 +358,46 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     assert has_element?(view, "#marks-table thead", "Composition")
   end
 
+  test "the assessment date links to that day's read-only roll-call history", c do
+    {:ok, view, _} =
+      live(c.conn, ~p"/teacher/contexts/#{c.ctx.id}/marks?seq=#{c.seq.id}&assessment=#{c.a.id}")
+
+    refute has_element?(view, "#assessment-roll-calls")
+    date = Date.to_iso8601(c.seq.start_date)
+    open_new_eval(view)
+
+    view
+    |> form("#new-assessment-form", %{
+      "assessment" => %{"label" => "Devoir daté", "given_on" => date}
+    })
+    |> render_submit()
+
+    expected = ~p"/school/courses/#{c.ctx.id}/roll-calls?#{[seq: c.seq.id, date: date]}"
+    assert has_element?(view, "#assessment-roll-calls a[href='#{expected}']")
+    {:ok, history, _} = live(c.conn, expected)
+    assert has_element?(history, "#history-sessions", "Aucun appel enregistré")
+    refute has_element?(history, "#history-view-students")
+  end
+
+  test "an existing assessment can be dated and its date can be removed", c do
+    {:ok, view, _} =
+      live(c.conn, ~p"/teacher/contexts/#{c.ctx.id}/marks?seq=#{c.seq.id}&assessment=#{c.a.id}")
+
+    date = Date.to_iso8601(c.seq.start_date)
+
+    for value <- [date, ""] do
+      render_click(view, "open_sheet", %{"sheet" => "edit_eval"})
+
+      view
+      |> form("#edit-assessment-form", %{
+        "edit" => %{"label" => c.a.label, "max_score" => "20", "given_on" => value}
+      })
+      |> render_submit()
+
+      assert has_element?(view, "#assessment-roll-calls a[target='_blank']") == (value != "")
+    end
+  end
+
   test "a blank assessment label is rejected and creates nothing", %{
     conn: conn,
     ctx: ctx,

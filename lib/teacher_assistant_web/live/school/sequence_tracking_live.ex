@@ -44,6 +44,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
            seq: nil,
            grid: nil,
            detail: nil,
+           focused_course?: false,
            missing_report: nil,
            missing_mode: "zero",
            missing_class: "",
@@ -95,8 +96,30 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
            picked: default_picked(teachers, reminders)
          )}
     end
+    |> focus_course(params["course"])
     |> load_missing_report()
   end
+
+  defp focus_course({:noreply, %{assigns: %{view: "classes", grid: %{} = grid}} = socket}, id)
+       when is_binary(id) do
+    selected =
+      Enum.find_value(grid.rows, fn row ->
+        Enum.find_value(Enum.with_index(grid.subjects), fn {subject, index} ->
+          case row.cells[subject.key] do
+            %{teaching_context: %{id: ^id}} -> detail(grid, row.class_group.id, index)
+            _ -> nil
+          end
+        end)
+      end)
+
+    case selected do
+      nil -> {:noreply, assign(socket, focused_course?: false)}
+      course -> {:noreply, assign(socket, detail: course, focused_course?: true, q: "")}
+    end
+  end
+
+  defp focus_course({:noreply, socket}, _id),
+    do: {:noreply, assign(socket, :focused_course?, false)}
 
   defp load_missing_report(
          {:noreply,
@@ -568,6 +591,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
           <.missing_students
             :if={@view == "students" && @missing_report}
             report={@missing_report}
+            sequence={@seq}
             mode={@missing_mode}
             class_id={@missing_class}
             q={@q}
@@ -601,6 +625,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
             />
             <.cell_detail
               :if={@detail}
+              focused?={@focused_course?}
               detail={@detail}
               competences={@competences}
               reminders={@reminders}
@@ -641,6 +666,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
     ]
 
   attr :report, :map, required: true
+  attr :sequence, :map, required: true
   attr :mode, :string, required: true
   attr :class_id, :string, required: true
   attr :q, :string, required: true
@@ -715,7 +741,13 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
           </summary>
           <ul class="space-y-1 pb-3 text-sm text-base-content/80">
             <li :for={item <- row.missing}>
-              {item.subject} · {item.label} · {teacher_name(item.teacher)}
+              <.link
+                patch={course_tracking_path(@sequence, item.context_id)}
+                class="link link-hover inline-flex min-h-10 items-center gap-2 text-primary"
+              >
+                <span>{item.subject} · {item.label} · {teacher_name(item.teacher)}</span>
+                <.icon name="hero-arrow-right" class="size-4 shrink-0" />
+              </.link>
             </li>
           </ul>
         </details>
@@ -735,13 +767,22 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
         </summary>
         <ul class="space-y-1 pb-3 text-sm text-base-content/80">
           <li :for={course <- @unassessed}>
-            {course.class.label} · {course.subject} · {teacher_name(course.teacher)}
+            <.link
+              patch={course_tracking_path(@sequence, course.context.id)}
+              class="link link-hover inline-flex min-h-10 items-center gap-2 text-primary"
+            >
+              <span>{course.class.label} · {course.subject} · {teacher_name(course.teacher)}</span>
+              <.icon name="hero-arrow-right" class="size-4 shrink-0" />
+            </.link>
           </li>
         </ul>
       </details>
     </section>
     """
   end
+
+  defp course_tracking_path(seq, id),
+    do: ~p"/school/sequences?#{[seq: seq.id, view: "classes", course: id]}" <> "#cell-detail"
 
   defp competence_tone(nil), do: :none
   defp competence_tone(0), do: :ok
@@ -1056,9 +1097,14 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
   attr :competences, :map, default: nil
   attr :reminders, :map, required: true
 
+  attr :focused?, :boolean, default: false
+
   defp cell_detail(assigns) do
     ~H"""
-    <div id="cell-detail" class="ta-panel flex flex-col gap-2 !border-primary">
+    <div
+      id="cell-detail"
+      class={["ta-panel flex flex-col gap-2 !border-primary", @focused? && "max-lg:order-first"]}
+    >
       <span class="ta-eyebrow">
         {@detail.class_group.label} · {@detail.subject.label}
       </span>

@@ -221,7 +221,8 @@ defmodule TeacherAssistant.Assessment do
       sequence: seq,
       label: label,
       assessment_type_id: Map.get(attrs, :assessment_type_id),
-      max_score: Map.get(attrs, :max_score)
+      max_score: Map.get(attrs, :max_score),
+      given_on: Map.get(attrs, :given_on)
     }
 
     Assessment

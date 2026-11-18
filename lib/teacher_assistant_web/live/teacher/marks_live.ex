@@ -20,7 +20,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   alias TeacherAssistant.Curriculum
   alias TeacherAssistant.Enrollment
   alias TeacherAssistant.Academics.{CombinedCourse, EntryProgress, Marks}
-  alias TeacherAssistant.Organization
+  alias TeacherAssistant.{Organization, Scope}
   alias TeacherAssistant.Academics.{Lock, MarkEntry, Reference}
   alias TeacherAssistantWeb.Dates
   alias TeacherAssistantWeb.Teacher.MarksComponents
@@ -190,6 +190,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     %{"label" => label}
     |> then(&if(type, do: Map.put(&1, "assessment_type_id", type.id), else: &1))
     |> then(&if(max, do: Map.put(&1, "max_score", max), else: &1))
+    |> then(
+      &if(params["given_on"] in [nil, ""],
+        do: &1,
+        else: Map.put(&1, "given_on", params["given_on"])
+      )
+    )
   end
 
   defp find_type(socket, id), do: Enum.find(socket.assigns.assessment_types, &(&1.id == id))
@@ -216,6 +222,12 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     do: by_cg |> Map.values() |> Enum.uniq_by(& &1.id)
 
   defp column_assessments(assessment), do: [assessment]
+
+  defp column_date_values(column),
+    do: column |> column_assessments() |> Enum.map(& &1.given_on) |> Enum.uniq()
+
+  defp column_dates(column),
+    do: column |> column_date_values() |> Enum.reject(&is_nil/1) |> Enum.sort(Date)
 
   # %{student_id => field text} of the stored marks.
   defp saved_marks(scope, column) do
@@ -376,7 +388,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     attrs = %{
       label: label,
       assessment_type_id: params["assessment_type_id"],
-      max_score: params["max_score"]
+      max_score: params["max_score"],
+      given_on: params["given_on"]
     }
 
     with %{} = seq when not is_nil(seq) <- socket.assigns.seq,
@@ -697,7 +710,16 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     column = socket.assigns.column
 
     form =
-      to_form(%{"label" => column.label, "max_score" => MarksComponents.max_text(column)},
+      to_form(
+        %{
+          "label" => column.label,
+          "max_score" => MarksComponents.max_text(column),
+          "given_on" =>
+            case column_date_values(column) do
+              [%Date{} = date] -> Date.to_iso8601(date)
+              _ -> nil
+            end
+        },
         as: :edit
       )
 
@@ -725,11 +747,29 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
 
       true ->
         case Curriculum.parse_coefficient(p["max_score"] || "") do
-          {:ok, max} -> {:ok, %{label: label, max_score: max}}
+          {:ok, max} -> edit_date(%{label: label, max_score: max}, p, column)
           :error -> {:error, gettext("Le barème doit être un nombre positif (ex. 20).")}
         end
     end
   end
+
+  defp edit_date(attrs, %{"given_on" => ""}, column) do
+    # A combined column can have legacy assessments held on different days.
+    # Leaving its blank date field alone preserves those dates.
+    case column_date_values(column) do
+      [_, _ | _] -> {:ok, attrs}
+      _ -> {:ok, Map.put(attrs, :given_on, nil)}
+    end
+  end
+
+  defp edit_date(attrs, %{"given_on" => value}, _column) when is_binary(value) do
+    case Date.from_iso8601(value) do
+      {:ok, date} -> {:ok, Map.put(attrs, :given_on, date)}
+      _ -> {:error, gettext("Choisissez une date d’évaluation valide.")}
+    end
+  end
+
+  defp edit_date(attrs, _params, _column), do: {:ok, attrs}
 
   defp update_column(socket, attrs) do
     %{current_scope: scope, column: column, seq: seq} = socket.assigns
@@ -1028,6 +1068,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         average: average,
         next_empty: next_empty_id(assigns),
         no_missing?: no_missing?,
+        roll_call_dates:
+          if(Scope.module?(assigns.current_scope, :appel),
+            do: column_dates(assigns.column),
+            else: []
+          ),
         can_create?: assigns.seq != nil and not assigns.locked?,
         editable?: assigns.column != nil and (not assigns.locked? or assigns.upcoming?),
         deletable?:
@@ -1374,6 +1419,20 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
             >
               {gettext("Aucune note manquante pour cette évaluation.")}
             </p>
+            <div :if={@roll_call_dates != []} id="assessment-roll-calls" class="flex flex-wrap gap-2">
+              <.link
+                :for={date <- @roll_call_dates}
+                href={
+                  ~p"/school/courses/#{@ctx.id}/roll-calls?#{[seq: @seq.id, date: Date.to_iso8601(date)]}"
+                }
+                target="_blank"
+                rel="noopener"
+                class="btn btn-ghost btn-sm min-h-10 text-primary"
+              >
+                <.icon name="hero-clipboard-document-check" class="size-4" />
+                {gettext("Voir l’appel du %{date}", date: Dates.day_month(date))}
+              </.link>
+            </div>
             <.pending_makeups names={@pending_makeups} />
             <div class="-mx-4 border-y border-base-300 bg-base-100 sm:mx-0 sm:overflow-x-auto sm:rounded-box sm:border">
               <%!-- `max-sm:block`, not `block sm:table`: daisyUI's `table` class is also
@@ -1700,6 +1759,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
           <p class="-mt-3 text-xs text-base-content/70">
             {gettext("Le nom se remplit d'après le type ; modifiable.")}
           </p>
+          <.input
+            type="date"
+            field={@new_assessment_form[:given_on]}
+            label={gettext("Date de l’évaluation (facultative)")}
+          />
           <%!-- APC: one competence per séquence, so asked only while it has none --%>
           <div :if={@apc? && is_nil(@competence)} id="new-eval-competence-field">
             <.input
@@ -1745,6 +1809,11 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
               class="ta-num input w-full text-center"
             />
           </div>
+          <.input
+            type="date"
+            field={@edit_form[:given_on]}
+            label={gettext("Date de l’évaluation (facultative)")}
+          />
           <p :if={@course} class="-mt-3 text-xs text-base-content/70">
             {gettext("Le changement vaut pour toutes les classes du cours.")}
           </p>

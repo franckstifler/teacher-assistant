@@ -42,6 +42,7 @@ defmodule TeacherAssistant.Academics.MissingMarksReport do
             missing =
               Enum.reduce(assessments, missing, fn entry, acc ->
                 info = %{
+                  context_id: course.context.id,
                   subject: course.subject,
                   teacher: course.teacher,
                   label: entry.assessment.label

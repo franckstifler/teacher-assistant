@@ -153,13 +153,18 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     view |> element("#new-eval-card") |> render_click()
 
     view
-    |> form("#new-assessment-form", %{"assessment" => %{"label" => "Devoir 1"}})
+    |> form("#new-assessment-form", %{
+      "assessment" => %{"label" => "Devoir 1", "given_on" => Date.to_iso8601(seq.start_date)}
+    })
     |> render_submit()
 
     assert [a_maco] = Assessment.list_assessments(scope, tc_maco, seq)
     assert [a_menu] = Assessment.list_assessments(scope, tc_menu, seq)
     assert a_maco.label == "Devoir 1"
     assert a_menu.label == "Devoir 1"
+    assert a_maco.given_on == seq.start_date
+    assert a_menu.given_on == seq.start_date
+    assert has_element?(view, "#assessment-roll-calls a")
     assert a_maco.id != a_menu.id
   end
 
