@@ -35,7 +35,7 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
          page_title: gettext("Mon emploi du temps"),
          periods: periods,
          grid: grid,
-         lessons: lessons_by_day(grid, periods, calendar.lesson_days),
+         lessons: LessonGroups.by_day(grid, periods, calendar.lesson_days),
          labels: scope |> Curriculum.list_units_for_scope() |> LessonComponents.course_labels(),
          service: Timetabling.teacher_service(scope, scope.current_user),
          calendar: calendar,
@@ -60,19 +60,6 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
 
   defp weekday(date), do: Enum.at(@weekdays, Date.day_of_week(date) - 1)
 
-  # Each school day's lessons, grouped (`LessonGroups`), in period order.
-  defp lessons_by_day(grid, periods, days) do
-    Map.new(days, fn day ->
-      lessons =
-        for period <- periods,
-            period.kind == :lesson,
-            slot <- Map.get(grid, {day, period.id}, []),
-            do: Map.put(slot, :period, period)
-
-      {day, LessonGroups.group(lessons)}
-    end)
-  end
-
   # Today's lessons with their roll-call state, by lesson key (`%{}` on a day without
   # lessons): the state, and whether the slot was moved or taken by a colleague.
   defp today_roll(_scope, grid, _calendar, _today, _now) when map_size(grid) == 0, do: %{}
@@ -88,17 +75,13 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
   end
 
   defp day_label(d), do: DayOfWeek.label(d)
-  defp day_short(d), do: d |> DayOfWeek.label() |> String.slice(0, 3)
+  defp day_short(d), do: DayOfWeek.short_label(d)
 
   defp roll_call_path(lesson, today),
     do:
       ~p"/school/classes/#{hd(LessonGroups.class_ids(lesson))}/attendance/#{lesson.period.id}?date=#{Date.to_iso8601(today)}"
 
   defp cell_slots(grid, day, period_id), do: Map.get(grid, {day, period_id}, [])
-
-  # Two lessons in one cell clash, unless they are the same combined course.
-  defp clash?(slots),
-    do: slots |> Enum.uniq_by(&(&1.combined_course_id || &1.teaching_context_id)) |> length() > 1
 
   # The cell's lessons, a combined course once with its classes.
   defp cell_lessons(slots),
@@ -295,7 +278,7 @@ defmodule TeacherAssistantWeb.School.MyTimetableLive do
                             :for={slots <- cell_lessons(cell_slots(@grid, day, period.id))}
                             class={[
                               "mb-1 rounded px-2 py-1.5 last:mb-0",
-                              if(clash?(cell_slots(@grid, day, period.id)),
+                              if(LessonGroups.clash?(cell_slots(@grid, day, period.id)),
                                 do: "bg-error/15 text-error",
                                 else: "bg-primary/15"
                               )

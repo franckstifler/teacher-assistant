@@ -60,7 +60,9 @@ defmodule TeacherAssistantWeb.School.MemberProfileLiveTest do
       school: school,
       member: membership,
       teacher: teacher,
-      class: class
+      class: class,
+      tc: tc,
+      period: p
     }
   end
 
@@ -183,5 +185,139 @@ defmodule TeacherAssistantWeb.School.MemberProfileLiveTest do
 
     assert html =~ "Les informations pédagogiques ne sont pas disponibles"
     assert html =~ "retry_member_profile"
+  end
+
+  test "a refusal says so without a retry that cannot succeed" do
+    html = render_panels(profile: {:error, :forbidden}, member: %{status: nil, roles: [:teacher]})
+    assert html =~ "Vous n&#39;avez pas accès aux informations pédagogiques"
+    refute html =~ "retry_member_profile"
+  end
+
+  test "the missing-year box is only for teachers" do
+    teacher =
+      render_panels(profile: {:error, :no_year}, member: %{status: nil, roles: [:teacher]})
+
+    assert teacher =~ "Sélectionnez une année scolaire"
+
+    bursar = render_panels(profile: {:error, :no_year}, member: %{status: nil, roles: [:bursar]})
+    refute bursar =~ "Sélectionnez une année scolaire"
+    refute bursar =~ "member-panel-timetable"
+  end
+
+  defp render_panels(assigns),
+    do:
+      render_component(
+        &TeacherAssistantWeb.School.MemberProfileComponents.academic_panels/1,
+        Keyword.merge([tab: "overview", day: nil], assigns)
+      )
+
+  test "a member who does not teach has no timetable or assignments, settings still work", c do
+    {:ok, %{user: bursar}} =
+      Accounts.add_member_by_phone(c.scope, %{
+        name: "Paul Intendant",
+        phone: "677555444",
+        roles: [:bursar]
+      })
+
+    {:ok, membership} = Accounts.fetch_school_membership(c.scope, bursar)
+    view = open(c.conn, membership)
+
+    refute has_element?(view, "#member-tab-timetable")
+    refute has_element?(view, "#member-panel-timetable")
+    refute has_element?(view, "#member-assignments")
+    refute has_element?(view, "#member-manage-assignments")
+    refute has_element?(view, "[data-profile-message]")
+
+    view |> element("#member-tab-settings") |> render_click()
+
+    view
+    |> form("#member-form", %{"member" => %{"status" => "titulaire"}})
+    |> render_submit()
+
+    refute has_element?(view, "#member-drawer")
+    assert has_element?(view, "#member-row-#{membership.id}", "Titulaire")
+  end
+
+  test "subjects are grouped once, with each class's placed hours and over-placement flagged",
+       c do
+    other = Enum.at(Enrollment.list_class_groups(c.scope, c.scope.current_academic_year), 1)
+
+    {:ok, tc2} =
+      Curriculum.assign_teacher(c.scope, other, c.teacher, %{
+        subject: "Sciences du profil",
+        weekly_hours: 1
+      })
+
+    for day <- [:tuesday, :wednesday] do
+      {:ok, _} =
+        Timetabling.place_slot(c.scope, other, %{
+          day: day,
+          period_id: c.period.id,
+          teaching_context_id: tc2.id
+        })
+    end
+
+    view = open(c.conn, c.member)
+    assignments = view |> element("#member-assignments") |> render()
+    assert length(String.split(assignments, "Sciences du profil")) == 2
+    assert has_element?(view, "#member-assignments [data-subject]", "5 h/sem.")
+    assert has_element?(view, "#member-course-#{tc2.id}[data-placement=over]", "2 / 1 h placées")
+
+    assert has_element?(
+             view,
+             "#member-course-#{c.tc.id}[data-placement=under]",
+             "1 / 4 h placées"
+           )
+
+    assert has_element?(view, "#member-course-#{tc2.id} a[href='/school/classes/#{other.id}']")
+  end
+
+  test "two lessons in the same slot are marked as a clash", c do
+    other = Enum.at(Enrollment.list_class_groups(c.scope, c.scope.current_academic_year), 1)
+
+    {:ok, tc2} =
+      Curriculum.assign_teacher(c.scope, other, c.teacher, %{subject: "Chimie", weekly_hours: 2})
+
+    {:ok, _} =
+      Timetabling.place_slot(c.scope, other, %{
+        day: :monday,
+        period_id: c.period.id,
+        teaching_context_id: tc2.id
+      })
+
+    view = open(c.conn, c.member)
+    view |> element("#member-tab-timetable") |> render_click()
+    assert has_element?(view, "#member-clash-monday-#{c.period.id}", "Conflit d'horaire")
+    assert has_element?(view, "#member-day-lessons [data-clash]")
+    refute has_element?(view, "#member-clash-tuesday-#{c.period.id}")
+  end
+
+  test "the day strip uses short labels and opens on today, a school day", c do
+    # The test clock (`Reference.today/0`) is Monday 2025-09-15.
+    view = open(c.conn, c.member)
+    view |> element("#member-tab-timetable") |> render_click()
+    assert has_element?(view, "#member-day-strip[role=group]")
+    assert has_element?(view, "#member-day-monday[aria-pressed=true][aria-current=date]", "Lun")
+    refute has_element?(view, "#member-day-tuesday[aria-current]")
+  end
+
+  test "a phone-only account shows its number once and copies into its own status", c do
+    view = open(c.conn, c.member)
+    assert has_element?(view, "#member-call", "Appeler")
+    refute has_element?(view, "#member-call", "677")
+    assert has_element?(view, "#member-copy-status-#{c.member.id}[phx-update=ignore]")
+
+    assert has_element?(
+             view,
+             "#member-copy-phone[phx-click*='member-copy-status-#{c.member.id}']"
+           )
+
+    colleague = TeacherFixtures.member_scope_fixture(c.scope, %{roles: [:teacher]})
+    {:ok, other} = Accounts.fetch_school_membership(c.scope, colleague.current_user)
+    {:ok, view, _} = live(c.conn, ~p"/school/members")
+    view |> element("#member-open-#{c.member.id}") |> render_click()
+    render_click(view, "edit_member", %{"id" => other.id})
+    assert has_element?(view, "#member-copy-status-#{other.id}")
+    refute has_element?(view, "#member-copy-status-#{c.member.id}")
   end
 end

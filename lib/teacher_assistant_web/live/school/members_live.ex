@@ -10,7 +10,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
   alias TeacherAssistant.Accounts.{MembershipStatus, SchoolInvitation, SchoolRole, User}
   alias TeacherAssistant.{Accounts, Timetabling}
-  alias TeacherAssistant.Academics.TeacherProfile
+  alias TeacherAssistant.Academics.{Reference, SchoolCalendar, TeacherProfile}
   alias TeacherAssistantWeb.Dates
 
   import TeacherAssistantWeb.School.MembersComponents
@@ -39,6 +39,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
        |> assign(:member_profile, nil)
        |> assign(:member_tab, "overview")
        |> assign(:member_day, nil)
+       |> assign(:member_today, nil)
        |> assign(:editing, nil)
        |> assign(:member_form, nil)
        |> assign(:member_error, nil)
@@ -293,6 +294,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
           profile={@member_profile}
           tab={@member_tab}
           day={@member_day}
+          today={@member_today}
           show_timetable?={show_member_timetable?(@scope, @editing, @member_profile)}
           form={@member_form}
           error={@member_error}
@@ -751,16 +753,22 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
   # --- Drawers -------------------------------------------------------------------------
 
+  # The page already knows whether the viewer may manage staff or set services
+  # (`TeacherProfile.allowed?/1`). The timetable opens on today when it is a
+  # school day, as « Mon emploi du temps » does.
   defp load_member_profile(socket) do
-    profile = TeacherProfile.load(socket.assigns.scope, socket.assigns.editing)
+    %{scope: scope, editing: member} = socket.assigns
+    allowed? = socket.assigns.can_manage_staff? or socket.assigns.can_set_service?
+    profile = TeacherProfile.load(scope, member, allowed?: allowed?)
+    today = SchoolCalendar.weekday(Reference.today())
 
     day =
       case profile do
-        {:ok, data} -> List.first(data.days)
+        {:ok, %{days: days}} -> if(today in days, do: today, else: List.first(days))
         _ -> nil
       end
 
-    assign(socket, member_profile: profile, member_day: day)
+    assign(socket, member_profile: profile, member_day: day, member_today: today)
   end
 
   defp show_member_timetable?(scope, member, profile) do

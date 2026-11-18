@@ -111,9 +111,22 @@ document.addEventListener("click", (event) => {
   event.target.closest?.("details[data-close-on-link] a")?.closest("details")?.removeAttribute("open")
 })
 
-// Members page: copy the temporary password (or the full message) shown once.
-window.addEventListener("phx:copy", (event) => {
-  if (navigator.clipboard) navigator.clipboard.writeText(event.target.textContent.trim())
+// Members page: copy the target's text (the temporary password, the selected
+// numbers…) or `detail.text`. With `detail.status`, the id of a live region, say
+// there whether it worked (`detail.success`, else `detail.failure`, a denial too).
+window.addEventListener("phx:copy", async (event) => {
+  const {text, status, success, failure} = event.detail || {}
+  const say = (message) => {
+    const region = status && document.getElementById(status)
+    if (region?.isConnected && message) region.textContent = message
+  }
+  try {
+    if (!navigator.clipboard) throw new Error("no clipboard")
+    await navigator.clipboard.writeText(text ?? event.target.textContent.trim())
+    say(success)
+  } catch {
+    say(failure)
+  }
 })
 
 // Bring an element into view, e.g. a form a row's « Modifier » just filled further
@@ -166,14 +179,3 @@ if (process.env.NODE_ENV === "development") {
     window.liveReloader = reloader
   })
 }
-
-// A member's phone number: report the actual clipboard outcome, including denial.
-window.addEventListener("phx:copy-contact", async ({detail}) => {
-  const status = document.getElementById("member-copy-status")
-  try {
-    await navigator.clipboard.writeText(detail.text)
-    if (status?.isConnected) status.textContent = detail.success
-  } catch {
-    if (status?.isConnected) status.textContent = detail.failure
-  }
-})

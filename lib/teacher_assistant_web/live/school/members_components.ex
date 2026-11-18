@@ -299,6 +299,7 @@ defmodule TeacherAssistantWeb.School.MembersComponents do
   attr :profile, :any, required: true
   attr :tab, :string, required: true
   attr :day, :atom, default: nil
+  attr :today, :atom, default: nil, doc: "today's weekday"
   attr :show_timetable?, :boolean, required: true
 
   def member_drawer(assigns) do
@@ -324,7 +325,14 @@ defmodule TeacherAssistantWeb.School.MembersComponents do
 
       <.contact_actions member={@member} />
       <.profile_tabs tab={@tab} timetable?={@show_timetable?} />
-      <.academic_panels profile={@profile} member={@member} tab={@tab} day={@day} />
+      <.academic_panels
+        profile={@profile}
+        member={@member}
+        tab={@tab}
+        timetable?={@show_timetable?}
+        day={@day}
+        today={@today}
+      />
       <section
         id="member-panel-settings"
         role="tabpanel"

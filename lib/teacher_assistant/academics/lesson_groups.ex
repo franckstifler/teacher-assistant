@@ -44,6 +44,30 @@ defmodule TeacherAssistant.Academics.LessonGroups do
     |> number_hours()
   end
 
+  @doc """
+  A teacher's week from a `Timetabling.teacher_timetable/2` grid: each of `days`
+  with its lessons grouped (`group/1`, their period put in), in period order;
+  breaks are left out.
+  """
+  def by_day(grid, periods, days) do
+    Map.new(days, fn day ->
+      lessons =
+        for period <- periods,
+            period.kind == :lesson,
+            slot <- Map.get(grid, {day, period.id}, []),
+            do: Map.put(slot, :period, period)
+
+      {day, group(lessons)}
+    end)
+  end
+
+  @doc """
+  Whether a timetable cell's slots hold two distinct lessons: a combined course
+  placed in several classes is one lesson, not a clash.
+  """
+  def clash?(slots),
+    do: slots |> Enum.uniq_by(&(&1.combined_course_id || &1.teaching_context_id)) |> length() > 1
+
   @doc "Whether a group of `group/1` is a combined course over several classes."
   def combined?(%{unit: {:course, _}, members: [_, _ | _]}), do: true
   def combined?(_group), do: false
