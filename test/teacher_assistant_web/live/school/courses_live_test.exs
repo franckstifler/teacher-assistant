@@ -189,6 +189,32 @@ defmodule TeacherAssistantWeb.School.CoursesLiveTest do
       %{card_tc: tc, card_seq: seq, conn: conn_for(school, teacher)}
     end
 
+    test "the Appels and Stats links are labelled, keep the séquence and land on the course",
+         %{conn: conn, card_tc: tc, card_seq: seq} do
+      {:ok, view, _} = live(conn, ~p"/school/courses")
+
+      assert has_element?(
+               view,
+               "#course-roll-calls-#{tc.id}[href='/school/courses/#{tc.id}/roll-calls?seq=#{seq.id}']",
+               "Appels"
+             )
+
+      assert view |> element("#course-stats-#{tc.id}", "Stats") |> render() =~
+               "#stats-row-#{tc.id}"
+    end
+
+    test "the resume count is the resumed assessment's own when a label repeats", %{
+      conn: conn,
+      scope: scope,
+      card_tc: tc,
+      card_seq: seq
+    } do
+      # « D1 » misses Bob only; a second « D1 » misses both students.
+      {:ok, _} = TeacherAssistant.Assessment.create_assessment(scope, tc, seq, %{label: "D1"})
+      {:ok, view, _} = live(conn, ~p"/school/courses")
+      assert has_element?(view, "#resume-mark-entry", "1 note à saisir")
+    end
+
     test "a card shows students, coefficient, PP and séquence progress", %{
       conn: conn,
       card_tc: tc

@@ -315,11 +315,18 @@ defmodule TeacherAssistant.Academics.Assessment do
   end
 
   defp build_combined_entry(label, contexts, primary, by_context_id, seq, scope, backfill?) do
+    # The column as a class that has it holds it: a class added later takes its
+    # maximum, weight, type and date, not the school's defaults.
+    template =
+      Enum.find_value(contexts, fn ctx ->
+        Enum.find(by_context_id[ctx.id], &(&1.label == label))
+      end)
+
     by_class_group_id =
       for ctx <- contexts,
           assessment =
             Enum.find(by_context_id[ctx.id], &(&1.label == label)) ||
-              (backfill? && backfill_assessment!(ctx, seq, label, scope)),
+              (backfill? && backfill_assessment!(ctx, seq, template, scope)),
           into: %{},
           do: {ctx.class_group_id, assessment}
 
@@ -336,8 +343,10 @@ defmodule TeacherAssistant.Academics.Assessment do
     }
   end
 
-  defp backfill_assessment!(ctx, seq, label, scope) do
-    case create_assessment(ctx, seq, %{label: label}, scope) do
+  defp backfill_assessment!(ctx, seq, template, scope) do
+    attrs = Map.take(template, [:label, :weight, :max_score, :given_on, :assessment_type_id])
+
+    case create_assessment(ctx, seq, attrs, scope) do
       {:ok, assessment} ->
         assessment
 

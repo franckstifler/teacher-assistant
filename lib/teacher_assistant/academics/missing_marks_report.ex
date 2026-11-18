@@ -23,38 +23,39 @@ defmodule TeacherAssistant.Academics.MissingMarksReport do
       Enum.reduce(courses, {%{}, %{}, []}, fn course, {totals, missing, unassessed} ->
         %{students: students, assessments: assessments} = Map.fetch!(pending, course.context.id)
 
-        case assessments do
-          [] ->
-            {totals, missing,
-             if(MapSet.size(students) > 0, do: [course | unassessed], else: unassessed)}
+        # A course with no assessment yet leaves its students without any mark: it
+        # counts as one missing entry each (`label: nil`, « aucune évaluation »).
+        slots =
+          case assessments do
+            [] -> [{nil, students}]
+            list -> Enum.map(list, &{&1.assessment.label, &1.missing})
+          end
 
-          assessments ->
-            totals =
-              Enum.reduce(students, totals, fn student_id, acc ->
-                Map.update(
-                  acc,
-                  {course.class.id, student_id},
-                  length(assessments),
-                  &(&1 + length(assessments))
-                )
-              end)
+        totals =
+          Enum.reduce(students, totals, fn student_id, acc ->
+            Map.update(acc, {course.class.id, student_id}, length(slots), &(&1 + length(slots)))
+          end)
 
-            missing =
-              Enum.reduce(assessments, missing, fn entry, acc ->
-                info = %{
-                  context_id: course.context.id,
-                  subject: course.subject,
-                  teacher: course.teacher,
-                  label: entry.assessment.label
-                }
+        missing =
+          Enum.reduce(slots, missing, fn {label, missing_ids}, acc ->
+            info = %{
+              context_id: course.context.id,
+              subject: course.subject,
+              teacher: course.teacher,
+              label: label
+            }
 
-                Enum.reduce(entry.missing, acc, fn student_id, acc ->
-                  Map.update(acc, {course.class.id, student_id}, [info], &[info | &1])
-                end)
-              end)
+            Enum.reduce(missing_ids, acc, fn student_id, acc ->
+              Map.update(acc, {course.class.id, student_id}, [info], &[info | &1])
+            end)
+          end)
 
-            {totals, missing, unassessed}
-        end
+        unassessed =
+          if assessments == [] and MapSet.size(students) > 0,
+            do: [course | unassessed],
+            else: unassessed
+
+        {totals, missing, unassessed}
       end)
 
     names = load_names(scope, missing |> Map.keys() |> Enum.map(&elem(&1, 1)) |> Enum.uniq())

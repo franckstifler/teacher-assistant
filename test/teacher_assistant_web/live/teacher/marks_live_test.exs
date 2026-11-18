@@ -52,12 +52,21 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     assert has_element?(marks, "#keypad-student", second.full_name)
     render_hook(marks, "keypad_next", %{"student" => second.id, "value" => "14"})
     refute has_element?(marks, "#keypad-student")
-    assert has_element?(marks, "#marks-no-missing")
-    refute has_element?(marks, "#mark-row-#{second.id}")
+    # The row stays where it was once saved: the list never jumps under the finger.
+    assert has_element?(marks, "#mark-input-#{second.id}[value='14']")
+    refute has_element?(marks, "#mark-row-#{c.s1.id}")
 
     marks |> element("#marks-missing-only") |> render_click()
     assert has_element?(marks, "#mark-row-#{c.s1.id}")
     assert has_element?(marks, "#mark-input-#{second.id}[value='14']")
+
+    # Turned on again, the list is taken afresh: nothing is missing any more.
+    marks |> element("#marks-missing-only") |> render_click()
+    assert has_element?(marks, "#marks-no-missing")
+    refute has_element?(marks, "#mark-row-#{second.id}")
+
+    # A mark cleared with the list off is missing again when it is turned back on.
+    marks |> element("#marks-missing-only") |> render_click()
     blur(marks, second.id, "")
     marks |> element("#marks-missing-only") |> render_click()
     assert has_element?(marks, "#mark-row-#{second.id}")
@@ -394,7 +403,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
       })
       |> render_submit()
 
-      assert has_element?(view, "#assessment-roll-calls a[target='_blank']") == (value != "")
+      assert has_element?(view, "#assessment-roll-calls a[data-phx-link='redirect']") ==
+               (value != "")
     end
   end
 

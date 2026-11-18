@@ -550,13 +550,15 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
           <div class="flex flex-wrap items-center gap-2">
             <nav id="view-switch" class="ta-seg" aria-label={gettext("Regrouper par")}>
               <.link
-                :for={{view, label} <- view_labels()}
+                :for={{view, label, short} <- view_labels()}
                 id={"view-#{view}"}
                 patch={self_path(@seq, view)}
                 class="ta-seg__btn"
                 aria-current={view == @view && "true"}
               >
-                {label}
+                <span class="max-sm:hidden">{label}</span>
+                <span class="sm:hidden" aria-hidden="true">{short}</span>
+                <span class="sr-only sm:hidden">{label}</span>
               </.link>
             </nav>
             <form
@@ -657,12 +659,13 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
     """
   end
 
+  # Four views fit one line on a phone only with the short labels.
   defp view_labels,
     do: [
-      {"teachers", gettext("Par enseignant")},
-      {"classes", gettext("Par classe")},
-      {"subjects", gettext("Par matière")},
-      {"students", gettext("Élèves sans notes")}
+      {"teachers", gettext("Par enseignant"), gettext("Enseignants")},
+      {"classes", gettext("Par classe"), gettext("Classes")},
+      {"subjects", gettext("Par matière"), gettext("Matières")},
+      {"students", gettext("Élèves sans notes"), gettext("Élèves")}
     ]
 
   attr :report, :map, required: true
@@ -745,7 +748,11 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                 patch={course_tracking_path(@sequence, item.context_id)}
                 class="link link-hover inline-flex min-h-10 items-center gap-2 text-primary"
               >
-                <span>{item.subject} · {item.label} · {teacher_name(item.teacher)}</span>
+                <span>
+                  {item.subject} · {item.label || gettext("aucune évaluation créée")} · {teacher_name(
+                    item.teacher
+                  )}
+                </span>
                 <.icon name="hero-arrow-right" class="size-4 shrink-0" />
               </.link>
             </li>

@@ -115,7 +115,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     |> assign(errors: %{}, saved_at: nil, today: Reference.today())
     |> assign(:apc?, apc?(scope, socket.assigns.groups))
     |> assign(competence: nil, competence_reminder_dismissed?: false, new_competence: "")
-    |> assign(sheet: nil, keypad: nil, keypad_pending?: false)
+    |> assign(sheet: nil, keypad: nil, keypad_pending?: false, missing_ids: MapSet.new())
     |> assign(course_units: [], course_query: "", auto_label: nil, edit_form: nil)
     |> assign_assessment_defaults(scope)
   end
@@ -274,13 +274,27 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     end)
   end
 
+  # « Notes manquantes seulement » lists who was missing when it was turned on: a row
+  # stays put once its mark is saved, so the list never jumps under the finger.
+  defp snapshot_missing(%{assigns: %{missing_only?: true, column: %{}} = assigns} = socket) do
+    ids =
+      for row <- assigns.roster,
+          missing_mark?(row, assigns),
+          into: MapSet.new(),
+          do: row.student.id
+
+    assign(socket, :missing_ids, ids)
+  end
+
+  defp snapshot_missing(socket), do: assign(socket, :missing_ids, MapSet.new())
+
   defp missing_mark?(row, assigns) do
     assessment_for_group?(assigns.column, row.class_group.id) and
       blank?(assigns.loaded, row.student.id)
   end
 
-  defp keypad_roster(%{missing_only?: true, roster: roster} = assigns, id) do
-    Enum.filter(roster, &(&1.student.id == id or missing_mark?(&1, assigns)))
+  defp keypad_roster(%{missing_only?: true, roster: roster, missing_ids: ids}, id) do
+    Enum.filter(roster, &(&1.student.id == id or MapSet.member?(ids, &1.student.id)))
   end
 
   defp keypad_roster(%{roster: roster}, _id), do: roster
@@ -466,6 +480,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
      |> assign(columns: columns, column: column, missing_only?: params["missing"] == "1")
      |> assign(:column_marks, column_marks(scope, columns, socket.assigns.student_group))
      |> assign(scores: loaded, loaded: loaded, errors: %{}, sheet: nil)
+     |> snapshot_missing()
      |> assign(:new_assessment_form, new_assessment_form(socket, seq))
      |> open_pending_keypad()
      |> load_competence()
@@ -521,7 +536,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   # --- Sheets (drawers; bottom sheets on phones) -----------------------------------
 
   def handle_event("toggle_missing_only", _params, socket),
-    do: {:noreply, update(socket, :missing_only?, &(!&1))}
+    do: {:noreply, socket |> update(:missing_only?, &(!&1)) |> snapshot_missing()}
 
   def handle_event("open_sheet", %{"sheet" => key}, socket) do
     case Map.fetch(@sheets, key) do
@@ -1016,8 +1031,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     group.students
     |> Enum.with_index(1)
     |> Enum.filter(fn {student, _} ->
-      not assigns.missing_only? or
-        missing_mark?(%{student: student, class_group: group.class_group}, assigns)
+      not assigns.missing_only? or MapSet.member?(assigns.missing_ids, student.id)
     end)
     |> Enum.map(fn {s, n} ->
       %{
@@ -1052,8 +1066,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     students = all_students(assigns)
     done = if assigns.column, do: entered_count(students, assigns.loaded), else: 0
 
-    no_missing? =
-      assigns.missing_only? and not Enum.any?(assigns.roster, &missing_mark?(&1, assigns))
+    no_missing? = assigns.missing_only? and MapSet.size(assigns.missing_ids) == 0
 
     average =
       assigns.column &&
@@ -1422,12 +1435,10 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
             <div :if={@roll_call_dates != []} id="assessment-roll-calls" class="flex flex-wrap gap-2">
               <.link
                 :for={date <- @roll_call_dates}
-                href={
+                navigate={
                   ~p"/school/courses/#{@ctx.id}/roll-calls?#{[seq: @seq.id, date: Date.to_iso8601(date)]}"
                 }
-                target="_blank"
-                rel="noopener"
-                class="btn btn-ghost btn-sm min-h-10 text-primary"
+                class="btn btn-ghost btn-sm min-h-11 text-primary"
               >
                 <.icon name="hero-clipboard-document-check" class="size-4" />
                 {gettext("Voir l’appel du %{date}", date: Dates.day_month(date))}

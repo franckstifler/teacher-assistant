@@ -88,6 +88,20 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     refute has_element?(marks, "#mark-row-#{c.s_maco.id}")
   end
 
+  test "a class missing a combined column gets it with the column's maximum and date", c do
+    {:ok, _} =
+      TeacherAssistant.Assessment.create_assessment(c.scope, c.tc_maco, c.seq, %{
+        label: "Devoir",
+        max_score: Decimal.new(10),
+        given_on: ~D[2025-10-01]
+      })
+
+    [column] = TeacherAssistant.Assessment.combined_assessments_for(c.scope, c.course, c.seq)
+    backfilled = column.by_class_group_id[c.menu.id]
+    assert Decimal.equal?(backfilled.max_score, 10)
+    assert backfilled.given_on == ~D[2025-10-01]
+  end
+
   test "shows the union roster grouped by class", %{
     conn: conn,
     tc_maco: tc_maco,

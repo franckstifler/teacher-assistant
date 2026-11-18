@@ -57,26 +57,33 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
     if Scope.module?(scope, :notes) and Scope.school_verified?(scope) and
          not Lock.locked?(seq, today) and
          not Lock.not_started?(seq, today) do
-      contexts = Enum.flat_map(courses, & &1.contexts)
+      # Only courses with an assessment still short of marks can be resumed.
+      candidates =
+        Enum.filter(courses, fn %{progress: p} ->
+          p.assessments > 0 and p.entered < p.expected
+        end)
+
+      contexts = Enum.flat_map(candidates, & &1.contexts)
       entries = EntryProgress.missing_entries(scope, scope.current_academic_year, seq, contexts)
 
-      Enum.find_value(courses, fn course ->
+      Enum.find_value(candidates, fn course ->
         assessments = Enum.flat_map(course.contexts, &entries[&1.id].assessments)
 
         case Enum.find(assessments, &(MapSet.size(&1.missing) > 0)) do
-          nil ->
-            nil
-
-          next ->
-            count =
-              assessments
-              |> Enum.filter(&(&1.assessment.label == next.assessment.label))
-              |> Enum.sum_by(&MapSet.size(&1.missing))
-
-            %{course: course, assessment: next.assessment, count: count}
+          nil -> nil
+          next -> %{course: course, assessment: next.assessment, count: count(next, assessments)}
         end
       end)
     end
+  end
+
+  # A combined course shares one column across its classes (one assessment per member
+  # class, by label): its missing marks add up. A solo course may repeat a label.
+  defp count(next, assessments) do
+    [next | assessments]
+    |> Enum.filter(&(&1.assessment.label == next.assessment.label))
+    |> Enum.uniq_by(& &1.assessment.teaching_context_id)
+    |> Enum.sum_by(&MapSet.size(&1.missing))
   end
 
   def handle_params(params, _uri, socket) do
@@ -309,7 +316,11 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
             {subject} · {ngettext("%{count} cours", "%{count} cours", length(rows))}
           </h2>
           <ul class="ta-section">
-            <li :for={course <- rows} id={"course-#{course.id}"} class="ta-list-row !p-0">
+            <li
+              :for={course <- rows}
+              id={"course-#{course.id}"}
+              class="ta-list-row !gap-0 !p-0 max-sm:flex-wrap"
+            >
               <.link
                 navigate={course_path(course, @seq)}
                 class="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-4 py-2 transition-colors hover:bg-base-content/5"
@@ -352,28 +363,37 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
                 <.state_pill :if={@seq} progress={course.progress} />
                 <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/70" />
               </.link>
-              <.link
-                :if={Scope.module?(@current_scope, :appel)}
-                id={"course-roll-calls-#{course.id}"}
-                navigate={~p"/school/courses/#{course.context_id}/roll-calls"}
-                aria-label={gettext("Historique des appels")}
-                title={gettext("Historique des appels")}
-                class="flex min-h-14 shrink-0 items-center gap-1 border-l border-base-300/60 px-3 text-xs font-medium text-primary hover:bg-base-content/5"
+              <%!-- Phones: the actions get their own line, labelled (no hover titles on a
+              touch screen); from `sm` they sit at the row's end. --%>
+              <div
+                :if={Scope.module?(@current_scope, :appel) or (@seq && @notes?)}
+                data-role="course-actions"
+                class="flex shrink-0 max-sm:w-full max-sm:border-t max-sm:border-base-300/60"
               >
-                <.icon name="hero-clipboard-document-check" class="size-4" />
-                <span class="max-sm:hidden">{gettext("Appels")}</span>
-              </.link>
-              <.link
-                :if={@seq && @notes?}
-                id={"course-stats-#{course.id}"}
-                navigate={~p"/school/statistics/me?#{[period: "seq:#{@seq.id}"]}"}
-                aria-label={gettext("Statistiques du cours")}
-                title={gettext("Statistiques du cours")}
-                class="flex min-h-14 shrink-0 items-center gap-1 border-l border-base-300/60 px-3 text-xs font-medium text-primary transition-colors hover:bg-base-content/5"
-              >
-                <.icon name="hero-chart-bar" class="size-4" />
-                <span class="max-sm:hidden">{gettext("Stats")}</span>
-              </.link>
+                <.link
+                  :if={Scope.module?(@current_scope, :appel)}
+                  id={"course-roll-calls-#{course.id}"}
+                  navigate={roll_calls_path(course, @seq)}
+                  aria-label={gettext("Historique des appels")}
+                  class="flex min-h-11 shrink-0 items-center justify-center gap-1.5 px-3 text-xs font-medium text-primary transition-colors hover:bg-base-content/5 max-sm:flex-1 sm:min-h-14 sm:border-l sm:border-base-300/60"
+                >
+                  <.icon name="hero-clipboard-document-check" class="size-4" />
+                  <span>{gettext("Appels")}</span>
+                </.link>
+                <.link
+                  :if={@seq && @notes?}
+                  id={"course-stats-#{course.id}"}
+                  navigate={
+                    ~p"/school/statistics/me?#{[period: "seq:#{@seq.id}"]}" <>
+                      "#stats-row-#{course.id}"
+                  }
+                  aria-label={gettext("Statistiques du cours")}
+                  class="flex min-h-11 shrink-0 items-center justify-center gap-1.5 border-base-300/60 px-3 text-xs font-medium text-primary transition-colors hover:bg-base-content/5 max-sm:flex-1 max-sm:border-l sm:min-h-14 sm:border-l"
+                >
+                  <.icon name="hero-chart-bar" class="size-4" />
+                  <span>{gettext("Stats")}</span>
+                </.link>
+              </div>
             </li>
           </ul>
         </section>
@@ -384,6 +404,12 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
 
   # The séquence's marks page: with the séquence in the URL when a competence is due,
   # so the competence form opens on it.
+  # The history opens on the séquence chosen here.
+  defp roll_calls_path(course, nil), do: ~p"/school/courses/#{course.context_id}/roll-calls"
+
+  defp roll_calls_path(course, seq),
+    do: ~p"/school/courses/#{course.context_id}/roll-calls?#{[seq: seq.id]}"
+
   defp course_path(%{competence: :missing, context_id: id}, %{id: seq_id}),
     do: ~p"/teacher/contexts/#{id}/marks?seq=#{seq_id}"
 

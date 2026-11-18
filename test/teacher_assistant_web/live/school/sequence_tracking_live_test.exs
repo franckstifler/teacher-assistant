@@ -92,7 +92,15 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
     assert has_element?(view, "#missing-students-report details", "Carl")
     refute has_element?(view, "#missing-students-report details", "Bob")
     refute has_element?(view, "#missing-students-report details", "Awa")
-    refute has_element?(view, "#missing-students-report details", "Dina")
+    # Dina's only course has no assessment yet: she has no mark at all.
+    assert has_element?(view, "#missing-students-report details", "Dina · 4e B · 1/1")
+
+    assert has_element?(
+             view,
+             "#missing-students-report details li",
+             "Anglais · aucune évaluation créée"
+           )
+
     assert has_element?(view, "#courses-without-assessment", "4e B · Anglais")
 
     view
@@ -102,7 +110,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
     assert has_element?(
              view,
              "#missing-students-report details",
-             "Bob · 3e A · 1/2 notes manquantes"
+             "Bob · 3e A · 2/3 notes manquantes"
            )
 
     assert has_element?(view, "#missing-students-report details li", "Maths · Devoir 1")

@@ -115,7 +115,7 @@ defmodule TeacherAssistant.Academics.EntryProgress do
     class_ids = contexts |> Enum.map(& &1.class_group_id) |> Enum.uniq()
     expected = scope |> load_enrollments(year, class_ids) |> expected_students(seq.start_date)
     exempt = load_exempt(scope, contexts)
-    assessments = load_assessments(scope, seq, Enum.map(contexts, & &1.id))
+    assessments = load_assessments(scope, seq, Enum.map(contexts, & &1.id), figures?: false)
     marked = TeacherAssistant.Assessment.marked_students(scope, assessments)
     by_context = Enum.group_by(assessments, & &1.teaching_context_id)
 
@@ -326,10 +326,12 @@ defmodule TeacherAssistant.Academics.EntryProgress do
     |> sorted_assessments(scope)
   end
 
-  defp load_assessments(scope, %Sequence{id: seq_id}, context_ids) do
+  # `figures?: false` when only who is marked matters (the missing lists): the
+  # counts and last-entry dates are subqueries per assessment.
+  defp load_assessments(scope, %Sequence{id: seq_id}, context_ids, opts \\ []) do
     Assessment
     |> Ash.Query.filter(sequence_id == ^seq_id and teaching_context_id in ^context_ids)
-    |> sorted_assessments(scope)
+    |> sorted_assessments(scope, Keyword.get(opts, :figures?, true))
   end
 
   defp load_sequences_assessments(_scope, [], _context_ids), do: []
@@ -343,10 +345,10 @@ defmodule TeacherAssistant.Academics.EntryProgress do
     |> Ash.read!(scope: scope)
   end
 
-  defp sorted_assessments(query, scope) do
+  defp sorted_assessments(query, scope, figures? \\ true) do
     query
     |> Ash.Query.select([:teaching_context_id, :label, :given_on, :inserted_at])
-    |> Ash.Query.load(@figures)
+    |> then(&if(figures?, do: Ash.Query.load(&1, @figures), else: &1))
     |> Ash.Query.sort(given_on: :asc_nils_last, inserted_at: :asc)
     |> Ash.read!(scope: scope)
   end
