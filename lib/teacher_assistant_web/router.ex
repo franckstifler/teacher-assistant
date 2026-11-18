@@ -173,6 +173,7 @@ defmodule TeacherAssistantWeb.Router do
       ] do
       live "/school", School.DashboardLive, :index
       live "/school/courses", School.CoursesLive, :index
+      live "/school/courses/:id/roll-calls", School.RollCallHistoryLive, :index
       live "/school/statistics/me", Teacher.StatisticsLive, :index
       live "/school/classes", School.ClassesLive, :index
       live "/school/classes/:id", School.ClassOverviewLive, :show

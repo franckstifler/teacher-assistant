@@ -34,6 +34,7 @@ defmodule TeacherAssistant.Modules do
     appel: [
       W.School.MyDayLive,
       W.School.AttendanceLive,
+      W.School.RollCallHistoryLive,
       W.School.RegisterLive,
       W.School.RollSheetLive,
       W.School.DayLive,

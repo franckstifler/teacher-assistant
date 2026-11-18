@@ -303,6 +303,17 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
                 <.icon name="hero-chevron-right" class="size-4 shrink-0 text-base-content/70" />
               </.link>
               <.link
+                :if={Scope.module?(@current_scope, :appel)}
+                id={"course-roll-calls-#{course.id}"}
+                navigate={~p"/school/courses/#{course.context_id}/roll-calls"}
+                aria-label={gettext("Historique des appels")}
+                title={gettext("Historique des appels")}
+                class="flex min-h-14 shrink-0 items-center gap-1 border-l border-base-300/60 px-3 text-xs font-medium text-primary hover:bg-base-content/5"
+              >
+                <.icon name="hero-clipboard-document-check" class="size-4" />
+                <span class="max-sm:hidden">{gettext("Appels")}</span>
+              </.link>
+              <.link
                 :if={@seq && @notes?}
                 id={"course-stats-#{course.id}"}
                 navigate={~p"/school/statistics/me?#{[period: "seq:#{@seq.id}"]}"}
