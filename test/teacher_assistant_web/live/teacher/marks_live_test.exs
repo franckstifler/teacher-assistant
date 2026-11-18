@@ -25,6 +25,44 @@ defmodule TeacherAssistantWeb.Teacher.MarksLiveTest do
     %{ws: ws, ctx: ctx, seq: seq, a: a, s1: s1, cg: cg, scope: scope}
   end
 
+  test "resume opens the pending assessment, hides entered rows and shows newly completed work",
+       c do
+    {:ok, second} = Enrollment.add_student(c.scope, c.cg, %{full_name: "Bella", sex: :f})
+    {:ok, pending} = Assessment.create_assessment(c.scope, c.ctx, c.seq, %{label: "Devoir 2"})
+
+    :ok =
+      Assessment.upsert_marks(c.scope, c.a, [
+        %{student_id: c.s1.id, score: Decimal.new(10)},
+        %{student_id: second.id, score: Decimal.new(11)}
+      ])
+
+    :ok = Assessment.upsert_marks(c.scope, pending, [%{student_id: c.s1.id, status: :excused}])
+
+    {:ok, courses, _} = live(c.conn, ~p"/school/courses")
+    assert has_element?(courses, "#resume-mark-entry", "Devoir 2")
+    assert has_element?(courses, "#resume-mark-entry", "1 note à saisir")
+
+    {:ok, marks, _} =
+      courses |> element("#resume-mark-entry") |> render_click() |> follow_redirect(c.conn)
+
+    assert has_element?(marks, "#marks-missing-only[aria-pressed=true]")
+    refute has_element?(marks, "#mark-row-#{c.s1.id}")
+    assert has_element?(marks, "#mark-row-#{second.id}")
+    marks |> element("#keypad-open") |> render_click()
+    assert has_element?(marks, "#keypad-student", second.full_name)
+    render_hook(marks, "keypad_next", %{"student" => second.id, "value" => "14"})
+    refute has_element?(marks, "#keypad-student")
+    assert has_element?(marks, "#marks-no-missing")
+    refute has_element?(marks, "#mark-row-#{second.id}")
+
+    marks |> element("#marks-missing-only") |> render_click()
+    assert has_element?(marks, "#mark-row-#{c.s1.id}")
+    assert has_element?(marks, "#mark-input-#{second.id}[value='14']")
+    blur(marks, second.id, "")
+    marks |> element("#marks-missing-only") |> render_click()
+    assert has_element?(marks, "#mark-row-#{second.id}")
+  end
+
   test "enters a mark for a student", %{
     conn: conn,
     ctx: ctx,

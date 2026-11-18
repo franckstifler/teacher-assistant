@@ -61,6 +61,33 @@ defmodule TeacherAssistantWeb.Teacher.MarksCombinedTest do
     }
   end
 
+  test "resume accepts a pending assessment ID from the second class of a combined column", c do
+    {:ok, first} =
+      Assessment.create_combined_assessment(c.scope, c.course, c.seq, %{label: "Devoir 1"})
+
+    {:ok, second} =
+      Assessment.create_combined_assessment(c.scope, c.course, c.seq, %{label: "Devoir 2"})
+
+    for assessment <- first ++ Enum.filter(second, &(&1.teaching_context_id == c.tc_maco.id)) do
+      student = if assessment.teaching_context_id == c.tc_maco.id, do: c.s_maco, else: c.s_menu
+
+      :ok =
+        Assessment.upsert_marks(c.scope, assessment, [
+          %{student_id: student.id, score: Decimal.new(12)}
+        ])
+    end
+
+    {:ok, courses, _} = live(c.conn, ~p"/school/courses")
+    assert has_element?(courses, "#resume-mark-entry", "Devoir 2")
+
+    {:ok, marks, _} =
+      courses |> element("#resume-mark-entry") |> render_click() |> follow_redirect(c.conn)
+
+    assert has_element?(marks, "#marks-table th", "Devoir 2")
+    assert has_element?(marks, "#mark-row-#{c.s_menu.id}")
+    refute has_element?(marks, "#mark-row-#{c.s_maco.id}")
+  end
+
   test "shows the union roster grouped by class", %{
     conn: conn,
     tc_maco: tc_maco,

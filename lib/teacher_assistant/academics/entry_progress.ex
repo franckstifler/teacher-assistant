@@ -108,6 +108,32 @@ defmodule TeacherAssistant.Academics.EntryProgress do
     end)
   end
 
+  @doc "Pending entries per course and assessment, using the same eligible roster as the progress grid."
+  def missing_entries(%Scope{}, _year, _sequence, []), do: %{}
+
+  def missing_entries(%Scope{} = scope, %AcademicYear{} = year, %Sequence{} = seq, contexts) do
+    class_ids = contexts |> Enum.map(& &1.class_group_id) |> Enum.uniq()
+    expected = scope |> load_enrollments(year, class_ids) |> expected_students(seq.start_date)
+    exempt = load_exempt(scope, contexts)
+    assessments = load_assessments(scope, seq, Enum.map(contexts, & &1.id))
+    marked = TeacherAssistant.Assessment.marked_students(scope, assessments)
+    by_context = Enum.group_by(assessments, & &1.teaching_context_id)
+
+    Map.new(contexts, fn context ->
+      students = taking(context, expected, exempt).current
+
+      pending =
+        Enum.map(Map.get(by_context, context.id, []), fn assessment ->
+          %{
+            assessment: assessment,
+            missing: MapSet.difference(students, Map.fetch!(marked, assessment.id))
+          }
+        end)
+
+      {context.id, %{students: students, assessments: pending}}
+    end)
+  end
+
   @doc """
   UX refonte (class page): how far the class's courses are in `seq` —
   `{started, total}`, `started` being the courses with at least one mark entered

@@ -15,7 +15,7 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.{Organization, ReportCards, Scope}
-  alias TeacherAssistant.Academics.{Lock, Reference, TeacherCourses}
+  alias TeacherAssistant.Academics.{EntryProgress, Lock, Reference, TeacherCourses}
   alias TeacherAssistantWeb.{BulletinTimeline, Dates}
 
   @filters ~w(all marks competence)
@@ -32,6 +32,7 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
        assign(socket,
          page_title: gettext("Mes cours"),
          courses: courses,
+         resume: if(connected?(socket), do: resume_entry(scope, seq, today, courses)),
          seq: seq,
          today: today,
          # Each class once, even when the teacher has it in two subjects.
@@ -47,6 +48,34 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
        )}
     else
       {:ok, push_navigate(socket, to: ~p"/school")}
+    end
+  end
+
+  defp resume_entry(_scope, nil, _today, _courses), do: nil
+
+  defp resume_entry(scope, seq, today, courses) do
+    if Scope.module?(scope, :notes) and Scope.school_verified?(scope) and
+         not Lock.locked?(seq, today) and
+         not Lock.not_started?(seq, today) do
+      contexts = Enum.flat_map(courses, & &1.contexts)
+      entries = EntryProgress.missing_entries(scope, scope.current_academic_year, seq, contexts)
+
+      Enum.find_value(courses, fn course ->
+        assessments = Enum.flat_map(course.contexts, &entries[&1.id].assessments)
+
+        case Enum.find(assessments, &(MapSet.size(&1.missing) > 0)) do
+          nil ->
+            nil
+
+          next ->
+            count =
+              assessments
+              |> Enum.filter(&(&1.assessment.label == next.assessment.label))
+              |> Enum.sum_by(&MapSet.size(&1.missing))
+
+            %{course: course, assessment: next.assessment, count: count}
+        end
+      end)
     end
   end
 
@@ -191,6 +220,27 @@ defmodule TeacherAssistantWeb.School.CoursesLive do
             {gettext("Imprimer mes listes de classe")}
           </a>
         </header>
+
+        <.link
+          :if={@resume}
+          id="resume-mark-entry"
+          navigate={
+            ~p"/teacher/contexts/#{@resume.course.context_id}/marks?#{[seq: @seq.id, assessment: @resume.assessment.id, missing: "1"]}"
+          }
+          class="ta-section flex min-h-14 items-center justify-between gap-3 px-4 py-3 hover:bg-base-content/5"
+        >
+          <span class="min-w-0 space-y-1">
+            <span class="block text-sm font-semibold text-primary">{gettext("Reprendre la saisie")}</span>
+            <span class="block text-sm font-medium">{@resume.course.title} · {@resume.assessment.label}</span>
+            <span class="block text-xs text-base-content/75">
+              {ngettext("%{count} note à saisir", "%{count} notes à saisir", @resume.count)} · {gettext(
+                "Échéance le %{date}",
+                date: Dates.short(@seq.grade_entry_deadline)
+              )}
+            </span>
+          </span>
+          <.icon name="hero-arrow-right" class="size-4 shrink-0 text-primary" />
+        </.link>
 
         <div :if={@courses == []} id="courses-empty">
           <.empty_state

@@ -105,6 +105,28 @@ defmodule TeacherAssistant.Academics.EntryProgressTest do
     assert {cell.entered, cell.expected, cell.pct} == {4, 4, 100}
   end
 
+  test "missing entries ignore exemptions, departures and every saved status", ctx do
+    make_optional(ctx)
+    :ok = Curriculum.set_exemptions(ctx.head, ctx.tc, [ctx.s1.id, ctx.s2.id])
+    mark(ctx, ctx.a1, ctx.s1, %{status: :excused})
+    mark(ctx, ctx.a2, ctx.s1, %{status: :absent})
+
+    %{enrollment: enrollment} =
+      Enum.find(Enrollment.list_roster(ctx.head, ctx.cg), &(&1.student.id == ctx.s2.id))
+
+    {:ok, _} =
+      Enrollment.leave(ctx.head, enrollment, %{
+        departure_reason: :transfer,
+        left_on: ctx.seq.start_date
+      })
+
+    entries = EntryProgress.missing_entries(ctx.head, ctx.year, ctx.seq, [ctx.tc])
+    course = Map.fetch!(entries, ctx.tc.id)
+    assert course.students == MapSet.new([ctx.s1.id])
+    assert length(course.assessments) == 2
+    assert Enum.all?(course.assessments, &(MapSet.size(&1.missing) == 0))
+  end
+
   test "a mark of a student not taking the course is not counted", ctx do
     for a <- [ctx.a1, ctx.a2], s <- [ctx.s1, ctx.s2, ctx.s3], do: mark(ctx, a, s)
 

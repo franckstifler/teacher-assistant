@@ -10,10 +10,10 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
 
   alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.{Assessment, Organization, Pilotage, ReportCards}
-  alias TeacherAssistant.Academics.{Lock, Reference}
+  alias TeacherAssistant.Academics.{Lock, MissingMarksReport, Reference}
   alias TeacherAssistantWeb.Dates
 
-  @views ~w(teachers classes subjects)
+  @views ~w(teachers classes subjects students)
 
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
@@ -44,6 +44,10 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
            seq: nil,
            grid: nil,
            detail: nil,
+           missing_report: nil,
+           missing_mode: "zero",
+           missing_class: "",
+           missing_limit: 50,
            reminders: %{},
            competences: nil,
            teachers: [],
@@ -82,6 +86,8 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
          assign(socket,
            seq: seq,
            grid: grid,
+           missing_report: nil,
+           missing_limit: 50,
            detail: default_selection(grid),
            reminders: reminders,
            competences: competences,
@@ -89,7 +95,22 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
            picked: default_picked(teachers, reminders)
          )}
     end
+    |> load_missing_report()
   end
+
+  defp load_missing_report(
+         {:noreply,
+          %{assigns: %{view: "students", grid: %{} = grid, missing_report: nil} = a} = socket}
+       ) do
+    {:noreply,
+     assign(
+       socket,
+       :missing_report,
+       MissingMarksReport.load(a.current_scope, a.year, a.seq, grid)
+     )}
+  end
+
+  defp load_missing_report(reply), do: reply
 
   # An id that is not one of this year's séquences (another year, garbage) falls
   # back to the default one.
@@ -108,7 +129,22 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
        push_patch(socket, to: ~p"/school/sequences?#{[seq: id, view: socket.assigns.view]}")}
 
   def handle_event("search", %{"q" => q}, socket),
-    do: {:noreply, assign(socket, :q, String.trim(q))}
+    do: {:noreply, assign(socket, q: String.trim(q), missing_limit: 50)}
+
+  def handle_event("missing-filter", params, socket) do
+    mode = if params["mode"] == "all", do: "all", else: "zero"
+    report = socket.assigns.missing_report
+
+    class =
+      if report && Enum.any?(report.classes, &(&1.id == params["class"])),
+        do: params["class"],
+        else: ""
+
+    {:noreply, assign(socket, missing_mode: mode, missing_class: class, missing_limit: 50)}
+  end
+
+  def handle_event("more-missing", _params, socket),
+    do: {:noreply, update(socket, :missing_limit, &(&1 + 50))}
 
   def handle_event("select", %{"cg" => cg_id, "col" => col}, socket) do
     with {n, ""} <- Integer.parse(col),
@@ -513,7 +549,11 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
                   name="q"
                   value={@q}
                   phx-debounce="200"
-                  placeholder={gettext("Enseignant, classe ou matière")}
+                  placeholder={
+                    if @view == "students",
+                      do: gettext("Élève, classe ou matière"),
+                      else: gettext("Enseignant, classe ou matière")
+                  }
                   aria-label={gettext("Rechercher")}
                   class="grow"
                 />
@@ -524,6 +564,15 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
           <p :if={@grid.subjects == []} class="ta-panel text-sm text-base-content/70">
             {gettext("Aucun cours n'est encore attribué pour cette année.")}
           </p>
+
+          <.missing_students
+            :if={@view == "students" && @missing_report}
+            report={@missing_report}
+            mode={@missing_mode}
+            class_id={@missing_class}
+            q={@q}
+            limit={@missing_limit}
+          />
 
           <.teacher_table
             :if={@view == "teachers" and @grid.subjects != []}
@@ -558,7 +607,12 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
             />
           </div>
 
-          <.bulk_bar id="remind-bar" count={MapSet.size(@picked)} clear="clear-picked">
+          <.bulk_bar
+            :if={@view != "students"}
+            id="remind-bar"
+            count={MapSet.size(@picked)}
+            clear="clear-picked"
+          >
             <:actions>
               <button
                 id="remind-picked"
@@ -582,8 +636,112 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
     do: [
       {"teachers", gettext("Par enseignant")},
       {"classes", gettext("Par classe")},
-      {"subjects", gettext("Par matière")}
+      {"subjects", gettext("Par matière")},
+      {"students", gettext("Élèves sans notes")}
     ]
+
+  attr :report, :map, required: true
+  attr :mode, :string, required: true
+  attr :class_id, :string, required: true
+  attr :q, :string, required: true
+  attr :limit, :integer, required: true
+
+  defp missing_students(assigns) do
+    rows =
+      Enum.filter(assigns.report.students, fn row ->
+        (assigns.mode == "all" or row.zero?) and
+          (assigns.class_id == "" or row.class.id == assigns.class_id) and
+          matches?([row.name, row.class.label | Enum.map(row.missing, & &1.subject)], assigns.q)
+      end)
+
+    unassessed =
+      Enum.filter(assigns.report.unassessed, fn course ->
+        (assigns.class_id == "" or course.class.id == assigns.class_id) and
+          matches?([course.class.label, course.subject, teacher_name(course.teacher)], assigns.q)
+      end)
+
+    assigns =
+      assign(assigns,
+        rows: Enum.take(rows, assigns.limit),
+        count: length(rows),
+        unassessed: unassessed
+      )
+
+    ~H"""
+    <section id="missing-students-report" class="space-y-4">
+      <form
+        id="missing-students-filters"
+        phx-change="missing-filter"
+        class="grid gap-3 sm:grid-cols-2"
+      >
+        <.input
+          type="select"
+          name="mode"
+          id="missing-mode"
+          label={gettext("État de la saisie")}
+          value={@mode}
+          options={[
+            {gettext("Aucune note saisie"), "zero"},
+            {gettext("Toutes les notes manquantes"), "all"}
+          ]}
+        />
+        <.input
+          type="select"
+          name="class"
+          id="missing-class"
+          label={gettext("Classe")}
+          value={@class_id}
+          options={[
+            {gettext("Toutes les classes"), ""} | Enum.map(@report.classes, &{&1.label, &1.id})
+          ]}
+        />
+      </form>
+      <p id="missing-students-count" class="text-sm text-base-content/75">
+        {ngettext("%{count} élève concerné", "%{count} élèves concernés", @count)}
+      </p>
+      <.empty_state
+        :if={@rows == []}
+        icon="hero-check-circle"
+        title={gettext("Aucun élève ne correspond à ce filtre.")}
+      />
+      <div :if={@rows != []} class="ta-section divide-y divide-base-300">
+        <details :for={row <- @rows} id={"missing-student-#{row.class.id}-#{row.id}"} class="px-4">
+          <summary class="min-h-11 cursor-pointer py-3 text-sm">
+            <span class="font-semibold">{row.name}</span>
+            · {row.class.label} · {gettext("%{missing}/%{total} notes manquantes",
+              missing: length(row.missing),
+              total: row.total
+            )}
+          </summary>
+          <ul class="space-y-1 pb-3 text-sm text-base-content/80">
+            <li :for={item <- row.missing}>
+              {item.subject} · {item.label} · {teacher_name(item.teacher)}
+            </li>
+          </ul>
+        </details>
+      </div>
+      <button
+        :if={@count > @limit}
+        type="button"
+        id="more-missing-students"
+        phx-click="more-missing"
+        class="btn btn-ghost min-h-11"
+      >
+        {gettext("Afficher plus d’élèves")}
+      </button>
+      <details :if={@unassessed != []} id="courses-without-assessment" class="ta-section px-4">
+        <summary class="min-h-11 cursor-pointer py-3 text-sm font-semibold">
+          {gettext("Cours sans évaluation créée (%{count})", count: length(@unassessed))}
+        </summary>
+        <ul class="space-y-1 pb-3 text-sm text-base-content/80">
+          <li :for={course <- @unassessed}>
+            {course.class.label} · {course.subject} · {teacher_name(course.teacher)}
+          </li>
+        </ul>
+      </details>
+    </section>
+    """
+  end
 
   defp competence_tone(nil), do: :none
   defp competence_tone(0), do: :ok

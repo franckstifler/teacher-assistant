@@ -255,11 +255,23 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp next_empty_id(%{locked?: true}), do: nil
   defp next_empty_id(%{column: nil}), do: nil
 
-  defp next_empty_id(%{roster: roster, loaded: loaded, errors: errors}) do
-    Enum.find_value(roster, fn %{student: %{id: id}} ->
-      if blank?(loaded, id) and not Map.has_key?(errors, id), do: id
+  defp next_empty_id(%{roster: roster, errors: errors} = assigns) do
+    Enum.find_value(roster, fn row ->
+      id = row.student.id
+      if missing_mark?(row, assigns) and not Map.has_key?(errors, id), do: id
     end)
   end
+
+  defp missing_mark?(row, assigns) do
+    assessment_for_group?(assigns.column, row.class_group.id) and
+      blank?(assigns.loaded, row.student.id)
+  end
+
+  defp keypad_roster(%{missing_only?: true, roster: roster} = assigns, id) do
+    Enum.filter(roster, &(&1.student.id == id or missing_mark?(&1, assigns)))
+  end
+
+  defp keypad_roster(%{roster: roster}, _id), do: roster
 
   defp preview_average(students, column, scores, rules) do
     marks =
@@ -413,6 +425,14 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     do:
       ~p"/teacher/contexts/#{socket.assigns.ctx.id}/marks?seq=#{seq.id}&assessment=#{assessment_id}"
 
+  defp pick_column(_columns, nil), do: nil
+
+  defp pick_column(columns, id) do
+    Enum.find(columns, fn column ->
+      column.id == id or Enum.any?(column_assessments(column), &(&1.id == id))
+    end)
+  end
+
   def handle_params(_params, _uri, %{assigns: %{loading?: true}} = socket),
     do: {:noreply, socket}
 
@@ -421,7 +441,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     seq = pick_seq(socket.assigns.sequences, params["seq"])
     columns = columns(socket, seq)
     # The asked column, else the first: the sheet is never hidden behind a picker.
-    column = pick(columns, params["assessment"]) || List.first(columns)
+    column = pick_column(columns, params["assessment"]) || List.first(columns)
     loaded = saved_marks(scope, column)
 
     {:noreply,
@@ -430,7 +450,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
      |> assign(seq: seq, upcoming?: seq != nil and Lock.not_started?(seq))
      # `locked?`: no entry at all — past the deadline, or not started yet (`upcoming?`).
      |> assign(locked?: seq != nil and (Lock.locked?(seq) or Lock.not_started?(seq)))
-     |> assign(columns: columns, column: column)
+     |> assign(columns: columns, column: column, missing_only?: params["missing"] == "1")
      |> assign(:column_marks, column_marks(scope, columns, socket.assigns.student_group))
      |> assign(scores: loaded, loaded: loaded, errors: %{}, sheet: nil)
      |> assign(:new_assessment_form, new_assessment_form(socket, seq))
@@ -486,6 +506,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     do: solo_assessment_form(socket.assigns.current_scope, socket.assigns.ctx, seq)
 
   # --- Sheets (drawers; bottom sheets on phones) -----------------------------------
+
+  def handle_event("toggle_missing_only", _params, socket),
+    do: {:noreply, update(socket, :missing_only?, &(!&1))}
 
   def handle_event("open_sheet", %{"sheet" => key}, socket) do
     case Map.fetch(@sheets, key) do
@@ -640,7 +663,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   defp keypad_target(_assigns, _id, "close"), do: nil
 
   defp keypad_target(%{errors: errors} = assigns, id, move) do
-    ids = Enum.map(assigns.roster, & &1.student.id)
+    ids = assigns |> keypad_roster(id) |> Enum.map(& &1.student.id)
     index = Enum.find_index(ids, &(&1 == id))
 
     cond do
@@ -947,9 +970,15 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   # --- Render ------------------------------------------------------------------------
 
   # One map per row with only that row's values (A8: change tracking per row).
-  defp mark_rows(students, scores, loaded, errors, next_empty) do
-    students
+  defp mark_rows(group, assigns) do
+    %{scores: scores, loaded: loaded, errors: errors, next_empty: next_empty} = assigns
+
+    group.students
     |> Enum.with_index(1)
+    |> Enum.filter(fn {student, _} ->
+      not assigns.missing_only? or
+        missing_mark?(%{student: student, class_group: group.class_group}, assigns)
+    end)
     |> Enum.map(fn {s, n} ->
       %{
         student: s,
@@ -961,6 +990,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
       }
     end)
   end
+
+  defp assessment_for_group?(%{by_class_group_id: by_class}, id), do: Map.has_key?(by_class, id)
+  defp assessment_for_group?(_assessment, _id), do: true
 
   def render(%{loading?: true} = assigns) do
     ~H"""
@@ -980,6 +1012,9 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
     students = all_students(assigns)
     done = if assigns.column, do: entered_count(students, assigns.loaded), else: 0
 
+    no_missing? =
+      assigns.missing_only? and not Enum.any?(assigns.roster, &missing_mark?(&1, assigns))
+
     average =
       assigns.column &&
         preview_average(students, assigns.column, assigns.loaded, assigns.grading_rules)
@@ -992,6 +1027,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
         missing: length(students) - done,
         average: average,
         next_empty: next_empty_id(assigns),
+        no_missing?: no_missing?,
         can_create?: assigns.seq != nil and not assigns.locked?,
         editable?: assigns.column != nil and (not assigns.locked? or assigns.upcoming?),
         deletable?:
@@ -1320,6 +1356,24 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
           class="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,1fr)_17rem]"
         >
           <div class="space-y-3">
+            <button
+              type="button"
+              id="marks-missing-only"
+              phx-click="toggle_missing_only"
+              aria-pressed={to_string(@missing_only?)}
+              class="btn btn-outline btn-sm min-h-10"
+            >
+              {if @missing_only?,
+                do: gettext("Afficher tous les élèves"),
+                else: gettext("Afficher les notes manquantes")}
+            </button>
+            <p
+              :if={@no_missing?}
+              id="marks-no-missing"
+              class="ta-leaf text-sm text-base-content/75"
+            >
+              {gettext("Aucune note manquante pour cette évaluation.")}
+            </p>
             <.pending_makeups names={@pending_makeups} />
             <div class="-mx-4 border-y border-base-300 bg-base-100 sm:mx-0 sm:overflow-x-auto sm:rounded-box sm:border">
               <%!-- `max-sm:block`, not `block sm:table`: daisyUI's `table` class is also
@@ -1372,7 +1426,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
                   <%!-- A8: each row carries its own values and is keyed, so a save
                        re-sends only the rows whose values changed. --%>
                   <MarksComponents.mark_row
-                    :for={row <- mark_rows(group.students, @scores, @loaded, @errors, @next_empty)}
+                    :for={row <- mark_rows(group, assigns)}
                     :key={row.student.id}
                     student={row.student}
                     n={row.n}
@@ -1491,7 +1545,7 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
             </div>
           </div>
           <button
-            :if={!@locked? && @missing > 0}
+            :if={!@locked? && @next_empty}
             type="button"
             id="keypad-open"
             phx-click="keypad_open"
@@ -1706,7 +1760,8 @@ defmodule TeacherAssistantWeb.Teacher.MarksLive do
   # The keypad's focus: the student, the two before (dimmed), the next few (as many
   # as a tall phone shows; the keypad clips the rest), and how many boxes are still
   # empty in their class.
-  defp keypad_assigns(%{keypad: id, roster: roster, loaded: loaded}) do
+  defp keypad_assigns(%{keypad: id, loaded: loaded} = assigns) do
+    roster = keypad_roster(assigns, id)
     index = Enum.find_index(roster, &(&1.student.id == id)) || 0
     focus = Enum.at(roster, index)
 

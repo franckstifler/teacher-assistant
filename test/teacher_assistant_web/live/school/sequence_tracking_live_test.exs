@@ -77,6 +77,45 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
              live(conn, ~p"/school/sequences")
   end
 
+  test "the censeur can distinguish zero entries, partial entry and courses without assessments",
+       c do
+    vice_principal = TeacherFixtures.member_scope_fixture(c.scope, %{roles: [:vice_principal]})
+
+    conn =
+      build_conn()
+      |> log_in_user(vice_principal.current_user)
+      |> put_session(:workspace_id, c.workspace.id)
+
+    {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{c.seq.id}")
+    view |> element("#view-students") |> render_click()
+
+    assert has_element?(view, "#missing-students-report details", "Carl")
+    refute has_element?(view, "#missing-students-report details", "Bob")
+    refute has_element?(view, "#missing-students-report details", "Awa")
+    refute has_element?(view, "#missing-students-report details", "Dina")
+    assert has_element?(view, "#courses-without-assessment", "4e B · Anglais")
+
+    view
+    |> form("#missing-students-filters", %{"mode" => "all", "class" => c.cg.id})
+    |> render_change()
+
+    assert has_element?(
+             view,
+             "#missing-students-report details",
+             "Bob · 3e A · 1/2 notes manquantes"
+           )
+
+    assert has_element?(view, "#missing-students-report details li", "Maths · Devoir 1")
+    refute has_element?(view, "#courses-without-assessment", "4e B")
+
+    assert {:error, {:live_redirect, %{to: "/school"}}} =
+             c.conn
+             |> recycle()
+             |> log_in_user(c.english)
+             |> put_session(:workspace_id, c.workspace.id)
+             |> live(~p"/school/sequences?seq=#{c.seq.id}&view=students")
+  end
+
   test "the censorat lands on the teacher table, under four figures", %{conn: conn} = ctx do
     {:ok, view, html} = live(conn, ~p"/school/sequences")
 
