@@ -56,6 +56,7 @@ defmodule TeacherAssistantWeb.Teacher.ContextSwitcherCombinedTest do
     # under its subject's heading, the row names the course without the subject
     name = String.replace_prefix(course.label, course.subject <> " · ", "")
     assert has_element?(view, "#course-combined-#{course.id}", name <> " · 2 classes")
-    assert length(Regex.scan(~r/id="course-[^"]+"/, html)) == 1
+    # one course row (each row also has its « Appels » link, `course-roll-calls-…`)
+    assert length(Regex.scan(~r/<li[^>]* id="course-[^"]+"/, html)) == 1
   end
 end

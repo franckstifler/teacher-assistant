@@ -542,15 +542,19 @@ defmodule TeacherAssistant.Timetabling do
     {:ok, profile} = Accounts.fetch_school_profile(scope)
     member = Enum.find(Accounts.list_members(scope), &(&1.user_id == user_id))
 
-    contexts =
-      TeachingContext
-      |> Ash.Query.filter(academic_year_id == ^year.id and teacher_user_id == ^user_id)
-      |> Ash.read!(scope: scope)
+    TeachingContext
+    |> Ash.Query.filter(academic_year_id == ^year.id and teacher_user_id == ^user_id)
+    |> Ash.read!(scope: scope)
+    |> service_from(user_id, member && member.statutory_hours, profile.statutory_hours)
+  end
 
-    grid = %{
-      services: %{user_id => member && member.statutory_hours},
-      school_hours: profile.statutory_hours
-    }
+  @doc """
+  `teacher_service/2` from data already read: the teacher's teaching contexts of
+  the year, their own service (`statutory_hours` of the membership, nil when unset)
+  and the school's. No read.
+  """
+  def service_from(contexts, user_id, own_hours, school_hours) do
+    grid = %{services: %{user_id => own_hours}, school_hours: school_hours}
 
     case AssignmentGrid.loads(contexts, grid) do
       %{^user_id => %{load: load, service: service}} -> %{load: load, service: service}

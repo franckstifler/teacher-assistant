@@ -10,4 +10,7 @@ defmodule TeacherAssistant.Academics.DayOfWeek do
   def label(:thursday), do: gettext("Jeudi")
   def label(:friday), do: gettext("Vendredi")
   def label(:saturday), do: gettext("Samedi")
+
+  @doc "The day's first three letters (« Lun », « Mon »), for narrow day strips."
+  def short_label(day), do: day |> label() |> String.slice(0, 3)
 end
