@@ -198,11 +198,21 @@ defmodule TeacherAssistantWeb.School.StudentsLiveTest do
     refute has_element?(view, "#students-next")
   end
 
-  test "clicking a row opens the student", %{conn: conn, awa: awa} do
+  test "a row opens the student through its name link, never a row click handler", %{
+    conn: conn,
+    awa: awa
+  } do
     {:ok, view, _html} = live(conn, ~p"/school/students")
+    row = "#student-#{awa.id}"
 
-    assert view |> element("#student-#{awa.id}") |> render() =~
-             ~s|phx-click="[[&quot;navigate&quot;|
+    # The link stretches over the row (`ta-row-open`), so Ctrl/⌘-click opens a new tab
+    # without the row also navigating the current one.
+    assert has_element?(
+             view,
+             "#{row}.ta-row-open a.ta-row-link[href='/school/students/#{awa.id}']"
+           )
+
+    refute has_element?(view, "#{row}[phx-click]")
   end
 
   describe "« Inscrire un élève »" do

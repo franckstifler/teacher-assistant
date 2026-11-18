@@ -786,16 +786,13 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
               <tr
                 :for={r <- group}
                 id={"readiness-#{r.class_group.id}"}
-                phx-click={
-                  JS.patch(~p"/school/bulletins?class=#{r.class_group.id}&period=#{@period_param}")
-                }
-                class="cursor-pointer transition-colors hover:bg-base-200/70"
+                class="ta-row-open transition-colors hover:bg-base-200/70"
               >
                 <td>
                   <.link
                     id={"open-#{r.class_group.id}"}
                     patch={~p"/school/bulletins?class=#{r.class_group.id}&period=#{@period_param}"}
-                    class="block font-semibold hover:no-underline"
+                    class="ta-row-link block font-semibold hover:no-underline"
                   >
                     {r.class_group.label}
                   </.link>
@@ -1009,9 +1006,8 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
                 <tr
                   :for={row <- @rows}
                   id={"bulletins-row-#{row.student.id}"}
-                  phx-click={JS.patch(patch_to(assigns, %{student: row.student.id}))}
                   class={[
-                    "cursor-pointer transition-colors hover:bg-base-200",
+                    "ta-row-open transition-colors hover:bg-base-200",
                     @selected && @selected.student.id == row.student.id && "bg-primary/10"
                   ]}
                 >
@@ -1020,7 +1016,7 @@ defmodule TeacherAssistantWeb.School.BulletinsLive do
                     <.link
                       data-role="select"
                       patch={patch_to(assigns, %{student: row.student.id})}
-                      class="link link-hover"
+                      class="ta-row-link link link-hover"
                     >
                       {row.student.full_name}
                     </.link>

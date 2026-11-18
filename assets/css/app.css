@@ -776,6 +776,14 @@ h1, h2, h3, .ta-display {
   transition: background-color 120ms ease;
 }
 .ta-list-row:first-child { border-top: 0; }
+
+/* A row opened by its own link (students, bulletins): the link stretches over the
+   whole row, so a tap anywhere opens it and Ctrl/⌘-click or a middle click opens a
+   new tab — never a click handler on the row, which would also navigate the current
+   tab. The row's other links and buttons sit above the stretched link. */
+.ta-row-open { position: relative; cursor: pointer; }
+.ta-row-open .ta-row-link::after { content: ""; position: absolute; inset: 0; }
+.ta-row-open :is(a, button, input, select, label):not(.ta-row-link) { position: relative; z-index: 1; }
 :is(a, button).ta-list-row:hover { background: color-mix(in oklch, var(--color-base-content) 5%, transparent); }
 .ta-list-row--selected { background: color-mix(in oklch, var(--color-primary) 12%, transparent); }
 

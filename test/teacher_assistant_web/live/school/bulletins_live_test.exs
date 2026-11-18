@@ -54,6 +54,14 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
     assert has_element?(view, "#print-class")
   end
 
+  test "class and student rows open through their own link, never a row click handler", ctx do
+    {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
+    row = "#bulletins-row-#{ctx.tch.student.id}"
+    assert has_element?(view, "#{row}.ta-row-open a.ta-row-link[data-role=select]")
+    refute has_element?(view, "#{row}[phx-click]")
+    refute has_element?(view, "tr[phx-click]")
+  end
+
   test "selecting a student updates the side panel", ctx do
     {:ok, view, _} = live(ctx.conn, bulletins_path(ctx.cg, ctx.term))
     view |> element("#bulletins-row-#{ctx.tch.student.id} a[data-role=select]") |> render_click()
@@ -334,6 +342,9 @@ defmodule TeacherAssistantWeb.School.BulletinsLiveTest do
       assert has_element?(view, row, "0 / 2")
       assert has_element?(view, row, "À planifier")
       assert has_element?(view, "#{row} a[href='/school/classes/#{ctx.cg.id}']", "Désigner")
+      # « Désigner » sits above the row's stretched link: no row handler fires with it.
+      assert has_element?(view, "#{row}.ta-row-open a.ta-row-link#open-#{ctx.cg.id}")
+      refute has_element?(view, "tr[phx-click]")
       assert has_element?(view, row, "étapes")
       assert has_element?(view, "tbody[id^='level-'] th", "4ème")
       assert has_element?(view, "#publish-ready[disabled]")

@@ -363,8 +363,7 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
               <tr
                 :for={e <- @page.results}
                 id={"student-#{e.student.id}"}
-                phx-click={JS.navigate(~p"/school/students/#{e.student.id}")}
-                class="cursor-pointer transition-colors hover:bg-base-200/60"
+                class="ta-row-open transition-colors hover:bg-base-200/60"
               >
                 <td>
                   <span class="flex items-center gap-3">
@@ -372,7 +371,7 @@ defmodule TeacherAssistantWeb.School.StudentsLive do
                     <span class="min-w-0">
                       <.link
                         navigate={~p"/school/students/#{e.student.id}"}
-                        class="block font-semibold hover:text-primary"
+                        class="ta-row-link block font-semibold hover:text-primary"
                       >
                         {e.student.full_name}
                       </.link>
