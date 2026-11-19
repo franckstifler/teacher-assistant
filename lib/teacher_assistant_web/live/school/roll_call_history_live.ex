@@ -186,15 +186,19 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLive do
                 }
                 class="space-y-1 border-t border-base-300 pb-3 pt-2"
               >
-                <h3 class="text-sm font-medium">{@history.classes[id]}</h3>
-                <ul class="divide-y divide-base-300/60">
+                <h3 :if={map_size(@history.classes) > 1} class="text-sm font-medium">
+                  {@history.classes[id]}
+                </h3>
+                <p :if={exceptions(students) == []} class="py-1 text-sm text-base-content/70">
+                  {gettext("Tous présents")}
+                </p>
+                <ul :if={exceptions(students) != []} class="divide-y divide-base-300/60">
                   <li
-                    :for={student <- students}
+                    :for={student <- exceptions(students)}
                     class="flex flex-wrap justify-between gap-x-3 py-2 text-sm"
                   >
-                    <span>{student.name}</span><span class="text-base-content/75">{status_label(
-                      student
-                    )}</span>
+                    <span>{student.name}</span>
+                    <.status_badge mark={student} />
                   </li>
                 </ul>
               </div>
@@ -203,12 +207,17 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLive do
         </div>
 
         <div :if={@view == :students} id="history-students" class="space-y-3">
-          <p class="text-sm text-base-content/75">
+          <.empty_state
+            :if={@history.sessions == []}
+            icon="hero-clipboard-document-check"
+            title={gettext("Aucun appel enregistré pour cette période.")}
+          />
+          <p :if={@history.sessions != []} class="text-sm text-base-content/75">
             {gettext(
               "Le total inclut les présences, retards et absences enregistrés pour chaque élève. Les périodes sans statut sont exclues."
             )}
           </p>
-          <div class="flex flex-wrap items-end gap-3">
+          <div :if={@history.sessions != []} class="flex flex-wrap items-end gap-3">
             <button
               type="button"
               id="history-repeated-absences"
@@ -235,7 +244,7 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLive do
             </form>
           </div>
           <.empty_state
-            :if={@history.students == []}
+            :if={@history.sessions != [] && @history.students == []}
             icon="hero-user-group"
             title={gettext("Aucun élève pour cette période.")}
           />
@@ -249,7 +258,7 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLive do
             />
           </div>
           <details
-            :for={student <- @visible_students}
+            :for={student <- if(@history.sessions == [], do: [], else: @visible_students)}
             id={"history-student-#{student.context_id}-#{student.id}"}
             class="ta-section px-4"
           >
@@ -257,16 +266,21 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLive do
               <span class="font-semibold">{student.name}</span>
               <span class="ml-1 text-sm text-base-content/70">{@history.classes[student.context_id]}</span>
               <span class="ml-2 text-sm font-semibold text-primary">{presence(student)}</span>
-              <span :if={student.history != []} class="mt-1 block text-xs text-base-content/70">{student_counts(
-                student
-              )}</span>
+              <span
+                :if={student_counts(student) != ""}
+                class="mt-1 block text-xs text-base-content/70"
+              >{student_counts(student)}</span>
             </summary>
-            <ul :if={student.history != []} class="divide-y divide-base-300 pb-2">
+            <p :if={exceptions(student.history) == []} class="pb-3 text-sm text-base-content/70">
+              {gettext("Aucune absence ni aucun retard.")}
+            </p>
+            <ul :if={exceptions(student.history) != []} class="divide-y divide-base-300 pb-2">
               <li
-                :for={mark <- student.history}
+                :for={mark <- exceptions(student.history)}
                 class="flex flex-wrap justify-between gap-x-3 py-2 text-sm"
               >
-                <span>{Dates.short(mark.date)} · {mark.period.label}</span><span>{status_label(mark)}</span>
+                <span>{Dates.short(mark.date)} · {mark.period.label}</span>
+                <.status_badge mark={mark} />
               </li>
             </ul>
           </details>
@@ -314,31 +328,71 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLive do
 
   defp presence(%{total: 0}), do: gettext("Aucun pointage comptabilisé")
 
-  defp presence(student),
-    do: gettext("%{present}/%{total} présents", present: student.present, total: student.total)
+  # A late student is in the room: « présents » counts them, out of those present,
+  # late or absent (a renvoi pour frais is apart), as in the per-student ratio.
+  defp presence(%{present: present, total: total}),
+    do:
+      ngettext("%{present}/%{total} présent", "%{present}/%{total} présents", total,
+        present: present,
+        total: total
+      )
 
-  defp status_label(%{status: nil}), do: gettext("Non marqué")
+  # What is worth listing: absences, lates and renvois — never the present ones.
+  defp exceptions(marks), do: Enum.reject(marks, &(&1.status == :present))
+
+  attr :mark, :map, required: true
+
+  defp status_badge(assigns) do
+    ~H"""
+    <span data-status={@mark.status} class={status_class(@mark)}>{status_label(@mark)}</span>
+    """
+  end
+
+  defp status_class(%{status: :absent, justified: true}), do: "text-base-content/75"
+  defp status_class(%{status: :absent}), do: "font-medium text-error"
+  defp status_class(%{status: :late}), do: "font-medium text-warning"
+  defp status_class(%{status: :sent_home}), do: "font-medium text-info"
+  defp status_class(_mark), do: "text-base-content/75"
+
   defp status_label(%{status: :absent, justified: true}), do: gettext("Absence justifiée")
+
+  defp status_label(%{status: :late, late_minutes: minutes}) when is_integer(minutes),
+    do: gettext("Retard · %{minutes} min", minutes: minutes)
+
   defp status_label(%{status: status}), do: AttendanceStatus.label(status)
 
   defp session_counts(session) do
     counts = session.groups |> Map.values() |> List.flatten() |> Enum.frequencies_by(& &1.status)
+    late = Map.get(counts, :late, 0)
+    present = Map.get(counts, :present, 0) + late
+    absent = Map.get(counts, :absent, 0)
 
-    gettext("%{present} présents · %{late} retards · %{absent} absences",
-      present: Map.get(counts, :present, 0),
-      late: Map.get(counts, :late, 0),
-      absent: Map.get(counts, :absent, 0)
-    )
+    join_counts([
+      presence(%{present: present, total: present + absent}),
+      late > 0 && ngettext("1 retard", "%{count} retards", late),
+      absent > 0 && ngettext("1 absence", "%{count} absences", absent),
+      sent_home_count(Map.get(counts, :sent_home, 0))
+    ])
   end
 
+  # Only what happened: « 1 retard · 3 absences (1 justifiée) », never « 0 renvois ».
   defp student_counts(student) do
-    gettext(
-      "%{late} retards · %{absent} absences (%{justified} justifiées) · %{unmarked} non marqués · %{sent_home} renvois",
-      late: student.late,
-      absent: student.absent,
-      justified: student.justified,
-      unmarked: student.unmarked,
-      sent_home: student.sent_home
-    )
+    join_counts([
+      student.late > 0 && ngettext("1 retard", "%{count} retards", student.late),
+      student.absent > 0 && absences(student.absent, student.justified),
+      sent_home_count(student.sent_home)
+    ])
   end
+
+  defp absences(absent, 0), do: ngettext("1 absence", "%{count} absences", absent)
+
+  defp absences(absent, justified),
+    do:
+      ngettext("1 absence", "%{count} absences", absent) <>
+        " " <> ngettext("(1 justifiée)", "(%{count} justifiées)", justified)
+
+  defp sent_home_count(0), do: false
+  defp sent_home_count(n), do: ngettext("1 renvoi", "%{count} renvois", n)
+
+  defp join_counts(parts), do: parts |> Enum.filter(&is_binary/1) |> Enum.join(" · ")
 end

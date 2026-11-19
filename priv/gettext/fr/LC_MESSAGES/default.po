@@ -7568,7 +7568,7 @@ msgstr[1] ""
 msgid "%{n} h par semaine"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:321
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:357
 #: lib/teacher_assistant_web/live/teacher/marks_components.ex:183
 #: lib/teacher_assistant_web/live/teacher/marks_components.ex:492
 #: lib/teacher_assistant_web/live/teacher/marks_components.ex:596
@@ -7722,6 +7722,7 @@ msgstr ""
 
 #: lib/teacher_assistant_web/live/school/roll_call.ex:744
 #: lib/teacher_assistant_web/live/school/roll_call.ex:882
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:193
 #, elixir-autogen, elixir-format
 msgid "Tous présents"
 msgstr ""
@@ -16485,21 +16486,6 @@ msgstr "Sélectionnez une année scolaire pour consulter les affectations et l'e
 msgid "Une heure correspond à une période de cours de l'école. Un cours regroupé compte une seule fois."
 msgstr "Une heure correspond à une période de cours de l'école. Un cours regroupé compte une seule fois."
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:335
-#, elixir-autogen, elixir-format
-msgid "%{late} retards · %{absent} absences (%{justified} justifiées) · %{unmarked} non marqués · %{sent_home} renvois"
-msgstr "%{late} retards · %{absent} absences (%{justified} justifiées) · %{unmarked} non marqués · %{sent_home} renvois"
-
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:327
-#, elixir-autogen, elixir-format
-msgid "%{present} présents · %{late} retards · %{absent} absences"
-msgstr "%{present} présents · %{late} retards · %{absent} absences"
-
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:318
-#, elixir-autogen, elixir-format
-msgid "%{present}/%{total} présents"
-msgstr "%{present}/%{total} présents"
-
 #: lib/teacher_assistant_web/live/school/courses_live.ex:381
 #, elixir-autogen, elixir-format
 msgid "Appels"
@@ -16511,16 +16497,17 @@ msgid "Appels des jours d’évaluation"
 msgstr "Appels des jours d’évaluation"
 
 #: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:156
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:213
 #, elixir-autogen, elixir-format
 msgid "Aucun appel enregistré pour cette période."
 msgstr "Aucun appel enregistré pour cette période."
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:315
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:329
 #, elixir-autogen, elixir-format
 msgid "Aucun pointage comptabilisé"
 msgstr "Aucun pointage comptabilisé"
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:240
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:249
 #, elixir-autogen, elixir-format
 msgid "Aucun élève pour cette période."
 msgstr "Aucun élève pour cette période."
@@ -16538,15 +16525,10 @@ msgstr "Aucune séquence configurée pour cette année scolaire."
 msgid "Historique des appels"
 msgstr "Historique des appels"
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:207
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:216
 #, elixir-autogen, elixir-format
 msgid "Le total inclut les présences, retards et absences enregistrés pour chaque élève. Les périodes sans statut sont exclues."
 msgstr "Le total inclut les présences, retards et absences enregistrés pour chaque élève. Les périodes sans statut sont exclues."
-
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:320
-#, elixir-autogen, elixir-format
-msgid "Non marqué"
-msgstr "Non marqué"
 
 #: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:101
 #, elixir-autogen, elixir-format
@@ -16563,7 +16545,7 @@ msgstr "Par élève"
 msgid "Semaine du %{date}"
 msgstr "Semaine du %{date}"
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:306
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:320
 #, elixir-autogen, elixir-format
 msgid "Séquence %{number} (%{first} au %{last})"
 msgstr "Séquence %{number} (%{first} au %{last})"
@@ -16708,17 +16690,65 @@ msgstr ""
 msgid "Membre introuvable."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:219
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:228
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Absences répétées"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:248
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:257
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Aucun élève n’atteint ce seuil d’absence."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:231
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:240
 #, elixir-autogen, elixir-format
 msgid "Nombre minimum d’absences"
+msgstr ""
+
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:335
+#, elixir-autogen, elixir-format
+msgid "%{present}/%{total} présent"
+msgid_plural "%{present}/%{total} présents"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:392
+#, elixir-autogen, elixir-format, fuzzy
+msgid "(1 justifiée)"
+msgid_plural "(%{count} justifiées)"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:373
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:387
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:391
+#, elixir-autogen, elixir-format, fuzzy
+msgid "1 absence"
+msgid_plural "%{count} absences"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:395
+#, elixir-autogen, elixir-format
+msgid "1 renvoi"
+msgid_plural "%{count} renvois"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:372
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:381
+#, elixir-autogen, elixir-format, fuzzy
+msgid "1 retard"
+msgid_plural "%{count} retards"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:275
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Aucune absence ni aucun retard."
+msgstr ""
+
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:360
+#, elixir-autogen, elixir-format
+msgid "Retard · %{minutes} min"
 msgstr ""

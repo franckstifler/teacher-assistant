@@ -73,9 +73,9 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLiveTest do
     assert length(history.sessions) == 4
     [awa, bella, chantal] = history.students
     assert %{present: 2, total: 3, late: 1, absent: 1, sent_home: 1} = awa
-    assert %{present: 0, total: 1, justified: 1, unmarked: 3} = bella
-    assert %{total: 0, unmarked: 2} = chantal
-    assert Enum.all?(chantal.history, &(&1.date == c.first.end_date))
+    assert %{present: 0, total: 1, justified: 1} = bella
+    assert length(bella.history) == 1
+    assert %{total: 0, history: []} = chantal
 
     {:ok, courses, _} = live(c.conn, ~p"/school/courses")
     assert has_element?(courses, "#course-roll-calls-#{c.context.id}")
@@ -88,7 +88,90 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLiveTest do
     assert has_element?(view, "#history-student-#{c.context.id}-#{a.id}", "2/3 présents")
     assert has_element?(view, "#history-student-#{c.context.id}-#{newcomer.id}", "Aucun pointage")
     view |> form("#history-sequence-form", %{"seq" => c.second.id}) |> render_change()
-    assert has_element?(view, "#history-student-#{c.context.id}-#{a.id}", "1/1 présents")
+    assert has_element?(view, "#history-student-#{c.context.id}-#{a.id}", "1/1 présent")
+  end
+
+  test "a student missing from a saved roll call was not in the class: never « non marqué »",
+       c do
+    d = c.first.start_date
+    a = student(c.scope, c.class, "Awa", d)
+    # Bella is on today's roster (added mid-day, transferred in or back from a
+    # departure) but was not on the sheet when this roll call was saved.
+    b = student(c.scope, c.class, "Bella", d)
+    record(c.scope, c.context, a, c.period, d, :present)
+
+    {:ok, history} = RollCallHistory.load(c.scope, c.context.id, %{"seq" => c.first.id})
+    [session] = history.sessions
+    assert [[%{id: id}]] = Map.values(session.groups)
+    assert id == a.id
+    assert %{total: 0, history: []} = Enum.find(history.students, &(&1.id == b.id))
+
+    {:ok, view, _} =
+      live(c.conn, ~p"/school/courses/#{c.context.id}/roll-calls?seq=#{c.first.id}")
+
+    refute render(view) =~ "Non marqué"
+    refute render(view) =~ "non marqué"
+  end
+
+  test "a session lists only its absences, lates and renvois, coloured, with late minutes",
+       c do
+    d = c.first.start_date
+    a = student(c.scope, c.class, "Awa", d)
+    b = student(c.scope, c.class, "Bella", d)
+    e = student(c.scope, c.class, "Esther", d)
+    record(c.scope, c.context, a, c.period, d, :present)
+    record(c.scope, c.context, b, c.period, d, :late, %{late_minutes: 25})
+    record(c.scope, c.context, e, c.period, d, :absent)
+    record(c.scope, c.context, a, c.next, d, :present)
+    record(c.scope, c.context, b, c.next, d, :present)
+    record(c.scope, c.context, e, c.next, d, :present)
+
+    {:ok, view, _} =
+      live(c.conn, ~p"/school/courses/#{c.context.id}/roll-calls?seq=#{c.first.id}")
+
+    session = "#history-session-#{d}-#{c.period.id}"
+    # a late is in the room: 2 of 3 present, one late, one absence; no zero counts
+    assert has_element?(view, session <> " summary", "2/3 présents · 1 retard · 1 absence")
+
+    for zero <- ["0 retard", "0 absence", "0 renvoi"],
+        do: refute(has_element?(view, session <> " summary", zero))
+
+    refute has_element?(view, session <> " li", "Awa")
+    assert has_element?(view, session <> " li [data-status=late]", "Retard · 25 min")
+    assert has_element?(view, session <> " li [data-status=absent]", "Absent")
+    assert has_element?(view, session <> " .text-error", "Absent")
+    assert has_element?(view, session <> " .text-warning", "Retard")
+
+    full = "#history-session-#{d}-#{c.next.id}"
+    assert has_element?(view, full <> " summary", "3/3 présents")
+    assert has_element?(view, full, "Tous présents")
+    refute has_element?(view, full <> " li")
+
+    view |> element("#history-view-students") |> render_click()
+    bella = "#history-student-#{c.context.id}-#{b.id}"
+    assert has_element?(view, bella, "2/2 présents")
+    assert has_element?(view, bella, "1 retard")
+
+    for zero <- ["0 absence", "0 renvoi"],
+        do: refute(has_element?(view, bella <> " summary", zero))
+
+    assert has_element?(view, bella <> " li", "Retard · 25 min")
+    refute has_element?(view, bella <> " li", "Présent")
+    esther = "#history-student-#{c.context.id}-#{e.id}"
+    assert has_element?(view, esther, "1 absence")
+    refute has_element?(view, esther, "1 absences")
+  end
+
+  test "« Par élève » with no roll call in the séquence says so instead of listing everyone",
+       c do
+    a = student(c.scope, c.class, "Awa", c.first.start_date)
+
+    {:ok, view, _} =
+      live(c.conn, ~p"/school/courses/#{c.context.id}/roll-calls?seq=#{c.first.id}&view=students")
+
+    assert has_element?(view, "#history-students", "Aucun appel enregistré pour cette période.")
+    refute has_element?(view, "#history-student-#{c.context.id}-#{a.id}")
+    refute has_element?(view, "#history-repeated-absences")
   end
 
   test "repeated absences use saved absent marks in the selected sequence", c do
@@ -113,7 +196,7 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLiveTest do
     view |> element("#history-repeated-absences") |> render_click()
     assert has_element?(view, "#history-repeated-absences[aria-pressed=true]")
     assert has_element?(view, a_row, "1/4 présents")
-    assert has_element?(view, a_row, "3 absences (1 justifiées)")
+    assert has_element?(view, a_row, "3 absences (1 justifiée)")
     assert has_element?(view, a_row <> " li", "Absence justifiée")
     refute has_element?(view, b_row)
 
@@ -122,7 +205,7 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLiveTest do
     view |> form("#history-sequence-form", %{"seq" => c.second.id}) |> render_change()
     assert has_element?(view, "#history-absence-empty")
     view |> element("#history-repeated-absences") |> render_click()
-    assert has_element?(view, b_row, "0/1 présents")
+    assert has_element?(view, b_row, "0/1 présent")
   end
 
   test "a dated assessment filters the saved periods and handles a day with no roll call", c do
