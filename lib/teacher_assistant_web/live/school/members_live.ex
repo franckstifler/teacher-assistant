@@ -8,10 +8,11 @@ defmodule TeacherAssistantWeb.School.MembersLive do
   """
   use TeacherAssistantWeb, :live_view
 
-  alias TeacherAssistant.Accounts.{MembershipStatus, SchoolInvitation, SchoolRole, User}
+  alias TeacherAssistant.Accounts.{SchoolInvitation, SchoolRole, User}
   alias TeacherAssistant.{Accounts, Timetabling}
   alias TeacherAssistant.Academics.{Reference, SchoolCalendar, TeacherProfile}
   alias TeacherAssistantWeb.Dates
+  alias TeacherAssistantWeb.School.MemberAccount
 
   import TeacherAssistantWeb.School.MembersComponents
 
@@ -582,7 +583,12 @@ defmodule TeacherAssistantWeb.School.MembersLive do
        assign(
          socket,
          :temporary_password,
-         temporary_password_info(socket, membership.user_id, password, :reset)
+         MemberAccount.temporary_password_info(
+           scope,
+           reloaded_user(socket, membership.user_id),
+           password,
+           :reset
+         )
        )}
     else
       {:error, %Ash.Error.Forbidden{}} ->
@@ -722,7 +728,12 @@ defmodule TeacherAssistantWeb.School.MembersLive do
          assign(
            socket,
            :temporary_password,
-           temporary_password_info(socket, user.id, password, :created)
+           MemberAccount.temporary_password_info(
+             socket.assigns.scope,
+             reloaded_user(socket, user.id),
+             password,
+             :created
+           )
          )}
 
       {:error, :invalid_phone} ->
@@ -789,6 +800,10 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     )
   end
 
+  # The account as reloaded after the change: its new temporary-password expiry.
+  defp reloaded_user(socket, user_id),
+    do: Enum.find_value(socket.assigns.members, fn m -> m.user_id == user_id && m.user end)
+
   defp add_error(socket, message), do: assign(socket, :add_error, message)
 
   # Keeps the drawer open on the submitted values; a partial save (the service
@@ -801,114 +816,6 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     |> assign(:editing, editing || socket.assigns.editing)
     |> assign(:member_form, to_form(attrs, as: "member", errors: errors))
     |> assign(:member_error, message)
-  end
-
-  # --- Account status -------------------------------------------------------------
-
-  # Only computed for staff managers (heads of this school). An account this school
-  # created that still cannot be reset, and that is neither an operator's, the
-  # viewer's own nor another head's (operator console spec §3), is one the person
-  # also uses in another school (see `Checks.ActiveInAnotherSchool`).
-  defp account_status(%User{} = user, roles, workspace_id, resettable?, viewer_id) do
-    cond do
-      user.created_in_workspace_id == workspace_id and not resettable? and user.role != :admin and
-        user.id != viewer_id and :head not in roles ->
-        %{
-          created_here_status(user)
-          | note:
-              gettext(
-                "Ce compte est aussi utilisé dans un autre établissement : la personne doit réinitialiser son mot de passe par e-mail ou demander à un administrateur."
-              )
-        }
-
-      user.created_in_workspace_id == workspace_id ->
-        created_here_status(user)
-
-      # An invited account the head has reset (operator console spec §3).
-      is_nil(user.created_in_workspace_id) and user.must_change_password ->
-        created_here_status(user)
-
-      user.phone && user.created_in_workspace_id ->
-        linked_status()
-
-      resettable? ->
-        %{kind: :active, label: gettext("Actif"), note: gettext("Compte personnel")}
-
-      true ->
-        self_managed_status()
-    end
-  end
-
-  defp created_here_status(user) do
-    cond do
-      Accounts.temporary_password_expired?(user) ->
-        %{
-          kind: :expired,
-          label: gettext("Mot de passe expiré"),
-          note: gettext("Expiré — donnez-en un nouveau")
-        }
-
-      user.must_change_password ->
-        %{
-          kind: :pending,
-          label: gettext("Mot de passe temporaire"),
-          note:
-            gettext("Pas encore connecté·e · expire le %{date}",
-              date: Dates.day_month(expiry_date(user))
-            )
-        }
-
-      true ->
-        %{
-          kind: :active,
-          label: gettext("Actif"),
-          note: gettext("Compte créé par l'établissement")
-        }
-    end
-  end
-
-  defp linked_status do
-    %{
-      kind: :linked,
-      label: gettext("Compte lié"),
-      note: gettext("Créé par un autre établissement")
-    }
-  end
-
-  defp self_managed_status do
-    %{
-      kind: :active,
-      label: gettext("Actif"),
-      note: gettext("Mot de passe géré par la personne")
-    }
-  end
-
-  defp expiry_date(%User{temporary_password_expires_at: %DateTime{} = at}),
-    do: DateTime.to_date(at)
-
-  defp expiry_date(_user), do: Date.add(TeacherAssistant.Academics.Reference.today(), 7)
-
-  defp temporary_password_info(socket, user_id, password, kind) do
-    user =
-      Enum.find_value(socket.assigns.members, fn m -> m.user_id == user_id && m.user end)
-
-    name = User.display_name(user)
-    login = User.contact(user)
-
-    %{
-      kind: kind,
-      name: name,
-      login: login,
-      value: password,
-      expires_on: expiry_date(user),
-      message:
-        gettext(
-          "%{school} — connexion : numéro %{login}, mot de passe temporaire %{password} (valable 7 jours).",
-          school: socket.assigns.scope.current_workspace.name,
-          login: login,
-          password: password
-        )
-    }
   end
 
   # --- Display helpers ----------------------------------------------------------------
@@ -988,44 +895,13 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     )
   end
 
-  defp checked_roles(%Phoenix.HTML.Form{params: %{"roles" => roles}}) when is_list(roles),
-    do: parse_roles(roles)
-
-  defp checked_roles(_form), do: [:teacher]
-
   defp blank?(value), do: is_nil(value) or String.trim(value) == ""
 
   defp reload_members(socket) do
     scope = socket.assigns.scope
     members = Accounts.list_members(scope)
-    workspace_id = scope.current_workspace.id
-
     # Computed here for the whole list, never in render.
-    resettable =
-      if socket.assigns.can_manage_staff?,
-        do: Accounts.resettable_member_ids(scope, members),
-        else: MapSet.new()
-
-    renamable =
-      if socket.assigns.can_manage_staff?,
-        do: Accounts.renamable_member_ids(scope, members),
-        else: MapSet.new()
-
-    # Colleagues' password state is for staff managers only.
-    states =
-      if socket.assigns.can_manage_staff?,
-        do:
-          Map.new(members, fn m ->
-            {m.id,
-             account_status(
-               m.user,
-               m.roles,
-               workspace_id,
-               MapSet.member?(resettable, m.id),
-               scope.current_user.id
-             )}
-          end),
-        else: %{}
+    access = MemberAccount.access(scope, members, socket.assigns.can_manage_staff?)
 
     socket
     |> assign(:members, members)
@@ -1035,9 +911,9 @@ defmodule TeacherAssistantWeb.School.MembersLive do
       MapSet.intersection(socket.assigns.selected, MapSet.new(members, & &1.id))
     )
     |> assign(:counts, counts(members))
-    |> assign(:resettable_member_ids, resettable)
-    |> assign(:renamable_member_ids, renamable)
-    |> assign(:account_states, states)
+    |> assign(:resettable_member_ids, access.resettable)
+    |> assign(:renamable_member_ids, access.renamable)
+    |> assign(:account_states, access.states)
     |> assign(:invitations, Accounts.list_pending_invitations(scope))
     |> apply_filters()
   end
@@ -1116,29 +992,6 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     |> String.replace(~r/\p{Mn}/u, "")
     |> String.downcase()
   end
-
-  defp parse_role(value) when is_binary(value),
-    do: Enum.find(SchoolRole.values(), &(to_string(&1) == value))
-
-  defp parse_role(_value), do: nil
-
-  defp parse_roles(roles) when is_list(roles) do
-    roles
-    |> Enum.map(&parse_role/1)
-    |> Enum.reject(&is_nil/1)
-    |> Enum.uniq()
-    |> case do
-      [] -> [:teacher]
-      parsed -> parsed
-    end
-  end
-
-  defp parse_roles(_roles), do: [:teacher]
-
-  defp parse_membership_status(status) when is_binary(status),
-    do: Enum.find(MembershipStatus.values(), &(to_string(&1) == status))
-
-  defp parse_membership_status(_status), do: nil
 
   defp find_invitation(scope, id) do
     scope

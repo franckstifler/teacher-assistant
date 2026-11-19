@@ -646,6 +646,38 @@ defmodule TeacherAssistantWeb.School.MembersComponents do
   def role_short(:guidance_counsellor), do: gettext("Orientation")
   def role_short(:librarian), do: gettext("Documentaliste")
 
+  @doc "A role from a form value; nil when unknown."
+  def parse_role(value) when is_binary(value),
+    do: Enum.find(SchoolRole.values(), &(to_string(&1) == value))
+
+  def parse_role(_value), do: nil
+
+  @doc "Roles from a form's values; a member always keeps at least « Enseignant »."
+  def parse_roles(roles) when is_list(roles) do
+    roles
+    |> Enum.map(&parse_role/1)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+    |> case do
+      [] -> [:teacher]
+      parsed -> parsed
+    end
+  end
+
+  def parse_roles(_roles), do: [:teacher]
+
+  @doc "An employment status from a form value; nil when unknown or empty."
+  def parse_membership_status(status) when is_binary(status),
+    do: Enum.find(MembershipStatus.values(), &(to_string(&1) == status))
+
+  def parse_membership_status(_status), do: nil
+
+  @doc "The roles ticked in a member or account form, for the role chips."
+  def checked_roles(%Phoenix.HTML.Form{params: %{"roles" => roles}}) when is_list(roles),
+    do: parse_roles(roles)
+
+  def checked_roles(_form), do: [:teacher]
+
   defp membership_status_options,
     do: Enum.map(MembershipStatus.values(), &{MembershipStatus.label(&1), to_string(&1)})
 end
