@@ -556,12 +556,12 @@ msgstr ""
 msgid "Impossible d'accepter cette invitation."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/member_live.ex:226
+#: lib/teacher_assistant_web/live/school/member_live.ex:233
 #, elixir-autogen, elixir-format
 msgid "Impossible de désactiver le dernier chef d'établissement."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/member_live.ex:166
+#: lib/teacher_assistant_web/live/school/member_live.ex:184
 #, elixir-autogen, elixir-format
 msgid "Impossible de retirer le rôle de chef d'établissement du dernier chef."
 msgstr ""
@@ -596,7 +596,7 @@ msgid "Members"
 msgstr ""
 
 #: lib/teacher_assistant_web/live/admin/school_live.ex:261
-#: lib/teacher_assistant_web/live/school/member_live.ex:70
+#: lib/teacher_assistant_web/live/school/member_live.ex:66
 #: lib/teacher_assistant_web/live/school/members_live.ex:26
 #: lib/teacher_assistant_web/live/school/members_live.ex:52
 #: lib/teacher_assistant_web/live/school/members_live.ex:196
@@ -5014,7 +5014,7 @@ msgid "Impossible : des notes ou une progression existent."
 msgstr ""
 
 #: lib/teacher_assistant_web/live/school/assignments_live.ex:105
-#: lib/teacher_assistant_web/live/school/member_live.ex:158
+#: lib/teacher_assistant_web/live/school/member_live.ex:176
 #, elixir-autogen, elixir-format
 msgid "Indiquez un nombre d'heures entre 1 et 40."
 msgstr ""
@@ -6272,7 +6272,7 @@ msgstr ""
 msgid "Impossible de créer le compte."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/member_live.ex:206
+#: lib/teacher_assistant_web/live/school/member_live.ex:216
 #, elixir-autogen, elixir-format
 msgid "Impossible de réinitialiser le mot de passe."
 msgstr ""
@@ -8935,7 +8935,7 @@ msgstr ""
 msgid "Horaires des cours"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/member_live.ex:171
+#: lib/teacher_assistant_web/live/school/member_live.ex:189
 #, elixir-autogen, elixir-format
 msgid "Impossible d'enregistrer les modifications."
 msgstr ""
@@ -9047,12 +9047,12 @@ msgstr ""
 msgid "Membre"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/member_live.ex:218
+#: lib/teacher_assistant_web/live/school/member_live.ex:225
 #, elixir-autogen, elixir-format
 msgid "Membre désactivé."
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/member_live.ex:146
+#: lib/teacher_assistant_web/live/school/member_live.ex:164
 #, elixir-autogen, elixir-format
 msgid "Membre mis à jour."
 msgstr ""
@@ -15656,7 +15656,7 @@ msgstr ""
 msgid "— : non saisie · Abs : absent · Disp : dispensé"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/member_live.ex:153
+#: lib/teacher_assistant_web/live/school/member_live.ex:171
 #, elixir-autogen, elixir-format
 msgid "Indiquez le nom et le prénom."
 msgstr ""
@@ -16702,7 +16702,7 @@ msgstr ""
 msgid "aucune évaluation créée"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/school/member_live.ex:358
+#: lib/teacher_assistant_web/live/school/member_live.ex:374
 #, elixir-autogen, elixir-format
 msgid "Membre introuvable."
 msgstr ""

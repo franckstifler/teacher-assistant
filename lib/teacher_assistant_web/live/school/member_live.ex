@@ -55,11 +55,7 @@ defmodule TeacherAssistantWeb.School.MemberLive do
         _ -> "overview"
       end
 
-    day =
-      Enum.find(days, &(Atom.to_string(&1) == params["day"])) ||
-        if(today in days, do: today, else: List.first(days))
-
-    {:noreply, assign(socket, tab: tab, day: day)}
+    {:noreply, assign(socket, tab: tab, day: pick_day(days, params["day"], today))}
   end
 
   def render(assigns) do
@@ -135,7 +131,29 @@ defmodule TeacherAssistantWeb.School.MemberLive do
   # when they would leave the school without a head), then the status. Fields a
   # viewer may not change are not rendered, so they are not in the params; policies
   # still refuse a crafted request.
-  def handle_event("save_member", params, socket) do
+  #
+  # Each change first re-reads the member: one deactivated meanwhile (the page may
+  # stay open for hours on a phone) is not written to.
+  def handle_event(event, params, socket)
+      when event in ["save_member", "reset_password", "deactivate_member"] do
+    case find_member(socket.assigns.scope, socket.assigns.member.id) do
+      nil -> {:noreply, not_found(socket)}
+      member -> change(event, params, assign(socket, :member, member))
+    end
+  end
+
+  def handle_event("ask_reset_password", _params, socket) do
+    m = socket.assigns.member
+    {:noreply, assign(socket, :reset_candidate, %{id: m.id, name: User.display_name(m.user)})}
+  end
+
+  def handle_event("cancel_reset_password", _params, socket),
+    do: {:noreply, assign(socket, :reset_candidate, nil)}
+
+  def handle_event("close_temporary_password", _params, socket),
+    do: {:noreply, assign(socket, :temporary_password, nil)}
+
+  defp change("save_member", params, socket) do
     %{scope: scope, member: m} = socket.assigns
     attrs = Map.get(params, "member", %{})
 
@@ -172,15 +190,7 @@ defmodule TeacherAssistantWeb.School.MemberLive do
     end
   end
 
-  def handle_event("ask_reset_password", _params, socket) do
-    m = socket.assigns.member
-    {:noreply, assign(socket, :reset_candidate, %{id: m.id, name: User.display_name(m.user)})}
-  end
-
-  def handle_event("cancel_reset_password", _params, socket),
-    do: {:noreply, assign(socket, :reset_candidate, nil)}
-
-  def handle_event("reset_password", _params, socket) do
+  defp change("reset_password", _params, socket) do
     %{scope: scope, member: member} = socket.assigns
     socket = assign(socket, :reset_candidate, nil)
 
@@ -207,10 +217,7 @@ defmodule TeacherAssistantWeb.School.MemberLive do
     end
   end
 
-  def handle_event("close_temporary_password", _params, socket),
-    do: {:noreply, assign(socket, :temporary_password, nil)}
-
-  def handle_event("deactivate_member", _params, socket) do
+  defp change("deactivate_member", _params, socket) do
     case Accounts.deactivate_member(socket.assigns.scope, socket.assigns.member) do
       {:ok, _} ->
         {:noreply,
@@ -294,11 +301,12 @@ defmodule TeacherAssistantWeb.School.MemberLive do
     |> assign(:member_error, message)
   end
 
-  # After a change: the member as saved, or the list when they are no longer here.
+  # After a change: the member as saved, with Résumé and the tabs recomputed (a new
+  # service or role changes them), or the list when they are no longer here.
   defp reload_member(socket) do
     case find_member(socket.assigns.scope, socket.assigns.member.id) do
       nil -> not_found(socket)
-      member -> assign_member(socket, member)
+      member -> socket |> assign_member(member) |> load_profile()
     end
   end
 
@@ -341,10 +349,18 @@ defmodule TeacherAssistantWeb.School.MemberLive do
 
     assign(socket,
       profile: profile,
+      day: pick_day(profile_days(profile), socket.assigns[:day], socket.assigns.today),
       show_timetable?:
         TeacherAssistant.Scope.module?(scope, :emploi_du_temps) &&
           (:teacher in member.roles || match?({:ok, %{teaching?: true}}, profile))
     )
+  end
+
+  # The wanted day when the member has lessons that day, else today when it is a
+  # school day, else the first day.
+  defp pick_day(days, wanted, today) do
+    Enum.find(days, &(Atom.to_string(&1) == to_string(wanted))) ||
+      if(today in days, do: today, else: List.first(days))
   end
 
   defp profile_days({:ok, %{days: days}}), do: days

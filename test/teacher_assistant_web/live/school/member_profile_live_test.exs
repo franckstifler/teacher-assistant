@@ -266,6 +266,50 @@ defmodule TeacherAssistantWeb.School.MemberProfileLiveTest do
     assert has_element?(view, "#member-page", "Titulaire")
   end
 
+  test "Résumé and the tabs follow a save without a reload", c do
+    view = open(c.conn, c.member, "?tab=settings")
+    refute has_element?(view, "#member-service-over")
+
+    view |> form("#member-form", %{"member" => %{"service" => "2"}}) |> render_submit()
+    view |> element("#member-tab-overview") |> render_click()
+    assert has_element?(view, "#member-service-over")
+    assert has_element?(view, "#member-workload", "2 h/sem.")
+
+    {:ok, %{user: bursar}} =
+      Accounts.add_member_by_phone(c.scope, %{
+        name: "Paul Caisse",
+        phone: "677555333",
+        roles: [:bursar]
+      })
+
+    {:ok, membership} = Accounts.fetch_school_membership(c.scope, bursar)
+    view = open(c.conn, membership, "?tab=settings")
+    refute has_element?(view, "#member-tab-timetable")
+
+    view
+    |> form("#member-form", %{"member" => %{"roles" => ["", "bursar", "teacher"]}})
+    |> render_submit()
+
+    assert has_element?(view, "#member-tab-timetable")
+  end
+
+  test "a member deactivated meanwhile is not written to", c do
+    view = open(c.conn, c.member, "?tab=settings")
+    {:ok, _} = Accounts.deactivate_member(c.scope, c.member)
+
+    view |> form("#member-form", %{"member" => %{"service" => "12"}}) |> render_submit()
+
+    {path, flash} = assert_redirect(view)
+    assert path == "/school/members"
+    assert flash["error"] == "Membre introuvable."
+    refute flash["info"]
+
+    {:ok, row} =
+      Ash.get(TeacherAssistant.Accounts.SchoolMembership, c.member.id, authorize?: false)
+
+    assert row.statutory_hours == nil
+  end
+
   test "the timetable tab is ignored for a member who does not teach", c do
     {:ok, %{user: bursar}} =
       Accounts.add_member_by_phone(c.scope, %{
