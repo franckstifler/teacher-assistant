@@ -14,6 +14,7 @@ defmodule TeacherAssistantWeb.School.MemberLive do
   alias TeacherAssistantWeb.School.MemberAccount
 
   import TeacherAssistantWeb.School.MemberProfileComponents
+  import TeacherAssistantWeb.School.MembersComponents
 
   def mount(%{"id" => id}, _session, socket) do
     scope = socket.assigns.current_scope
@@ -32,6 +33,7 @@ defmodule TeacherAssistantWeb.School.MemberLive do
          socket
          |> assign(scope: scope, can_manage_staff?: manage?, can_set_service?: service?)
          |> assign(:today, SchoolCalendar.weekday(Reference.today()))
+         |> assign(member_error: nil, reset_candidate: nil, temporary_password: nil)
          |> assign_member(member)
          |> load_profile()}
 
@@ -97,6 +99,21 @@ defmodule TeacherAssistantWeb.School.MemberLive do
           day={@day}
           today={@today}
         />
+        <.member_settings
+          member={@member}
+          form={@member_form}
+          error={@member_error}
+          state={@account.states[@member.id]}
+          resettable?={MapSet.member?(@account.resettable, @member.id)}
+          renamable?={MapSet.member?(@account.renamable, @member.id)}
+          can_manage_staff?={@can_manage_staff?}
+          can_set_service?={@can_set_service?}
+          roles={checked_roles(@member_form)}
+          tab={@tab}
+        />
+
+        <.confirm_reset_dialog :if={@reset_candidate} candidate={@reset_candidate} />
+        <.temporary_password_dialog :if={@temporary_password} info={@temporary_password} />
       </section>
     </Layouts.app>
     """
@@ -113,6 +130,194 @@ defmodule TeacherAssistantWeb.School.MemberLive do
 
   def handle_event("retry_member_profile", _params, socket), do: {:noreply, load_profile(socket)}
 
+  # One submit for the settings' fields. The service is saved first (it is the only
+  # field that can be rejected as invalid input), then the name, the roles (refused
+  # when they would leave the school without a head), then the status. Fields a
+  # viewer may not change are not rendered, so they are not in the params; policies
+  # still refuse a crafted request.
+  def handle_event("save_member", params, socket) do
+    %{scope: scope, member: m} = socket.assigns
+    attrs = Map.get(params, "member", %{})
+
+    with :ok <- save_name(scope, m, attrs),
+         {:ok, m} <- save_service(scope, m, attrs),
+         {:ok, m} <- save_roles(scope, m, attrs),
+         {:ok, _} <- save_status(scope, m, attrs) do
+      {:noreply, socket |> reload_member() |> put_flash(:info, gettext("Membre mis à jour."))}
+    else
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
+      {:error, :blank_name} ->
+        {:noreply,
+         member_error(socket, attrs, nil, name: {gettext("Indiquez le nom et le prénom."), []})}
+
+      {:error, :invalid_hours} ->
+        {:noreply,
+         member_error(socket, attrs, nil,
+           service: {gettext("Indiquez un nombre d'heures entre 1 et 40."), []}
+         )}
+
+      {:error, :last_head} ->
+        {:noreply,
+         member_error(
+           socket,
+           attrs,
+           gettext("Impossible de retirer le rôle de chef d'établissement du dernier chef.")
+         )}
+
+      {:error, _} ->
+        {:noreply,
+         member_error(socket, attrs, gettext("Impossible d'enregistrer les modifications."))}
+    end
+  end
+
+  def handle_event("ask_reset_password", _params, socket) do
+    m = socket.assigns.member
+    {:noreply, assign(socket, :reset_candidate, %{id: m.id, name: User.display_name(m.user)})}
+  end
+
+  def handle_event("cancel_reset_password", _params, socket),
+    do: {:noreply, assign(socket, :reset_candidate, nil)}
+
+  def handle_event("reset_password", _params, socket) do
+    %{scope: scope, member: member} = socket.assigns
+    socket = assign(socket, :reset_candidate, nil)
+
+    case Accounts.reset_member_password(scope, member) do
+      {:ok, password} ->
+        socket = reload_member(socket)
+
+        info =
+          MemberAccount.temporary_password_info(
+            scope,
+            socket.assigns.member.user,
+            password,
+            :reset
+          )
+
+        {:noreply, assign(socket, :temporary_password, info)}
+
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
+      _ ->
+        {:noreply,
+         put_flash(socket, :error, gettext("Impossible de réinitialiser le mot de passe."))}
+    end
+  end
+
+  def handle_event("close_temporary_password", _params, socket),
+    do: {:noreply, assign(socket, :temporary_password, nil)}
+
+  def handle_event("deactivate_member", _params, socket) do
+    case Accounts.deactivate_member(socket.assigns.scope, socket.assigns.member) do
+      {:ok, _} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, gettext("Membre désactivé."))
+         |> push_navigate(to: ~p"/school/members")}
+
+      {:error, :last_head} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Impossible de désactiver le dernier chef d'établissement.")
+         )}
+
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, Authz.put_not_allowed(socket)}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  defp save_service(scope, m, %{"service" => value}) when is_binary(value) do
+    value = String.trim(value)
+
+    if value == to_string(m.statutory_hours || ""),
+      do: {:ok, m},
+      else: Accounts.set_member_service(scope, m, value)
+  end
+
+  defp save_service(_scope, m, _attrs), do: {:ok, m}
+
+  # The name field shows only to those who may rename (the `:rename_by_school` policy
+  # decides); an unchanged name writes nothing. A member invited by e-mail may have no
+  # name yet: the field may stay empty, but a name is never erased.
+  defp save_name(scope, m, %{"name" => name}) when is_binary(name) do
+    cond do
+      blank?(name) and blank?(m.user.name) ->
+        :ok
+
+      blank?(name) ->
+        {:error, :blank_name}
+
+      Enum.join(String.split(name), " ") == m.user.name ->
+        :ok
+
+      true ->
+        with {:ok, _user} <- Accounts.rename_member(scope, m, name), do: :ok
+    end
+  end
+
+  defp save_name(_scope, _m, _attrs), do: :ok
+
+  defp save_roles(scope, m, %{"roles" => roles}) when is_list(roles) do
+    roles = parse_roles(roles)
+
+    if MapSet.new(roles) == MapSet.new(m.roles),
+      do: {:ok, m},
+      else: Accounts.update_member_roles(scope, m, roles)
+  end
+
+  defp save_roles(_scope, m, _attrs), do: {:ok, m}
+
+  defp save_status(scope, m, %{"status" => status}) when is_binary(status) do
+    status = parse_membership_status(status)
+
+    if status == m.status,
+      do: {:ok, m},
+      else: Accounts.update_member_status(scope, m, status)
+  end
+
+  defp save_status(_scope, m, _attrs), do: {:ok, m}
+
+  # Keeps the submitted values and the message; a partial save (the service before a
+  # refused role change) is already in the reloaded member.
+  defp member_error(socket, attrs, message, errors \\ []) do
+    socket
+    |> reload_member()
+    |> assign(:member_form, to_form(attrs, as: "member", errors: errors))
+    |> assign(:member_error, message)
+  end
+
+  # After a change: the member as saved, or the list when they are no longer here.
+  defp reload_member(socket) do
+    case find_member(socket.assigns.scope, socket.assigns.member.id) do
+      nil -> not_found(socket)
+      member -> assign_member(socket, member)
+    end
+  end
+
+  # The settings' fields span three actions (roles, status, statutory hours), each
+  # with its own policy and guard, so it is a plain form saved field by field.
+  defp member_form(m) do
+    to_form(
+      %{
+        "name" => m.user.name || "",
+        "roles" => Enum.map(m.roles, &to_string/1),
+        "status" => if(m.status, do: to_string(m.status), else: ""),
+        "service" => to_string(m.statutory_hours || "")
+      },
+      as: "member"
+    )
+  end
+
+  defp blank?(value), do: is_nil(value) or String.trim(value) == ""
+
   # The same policy-checked read as the list: only this school's active members.
   defp find_member(scope, id) do
     scope
@@ -127,6 +332,7 @@ defmodule TeacherAssistantWeb.School.MemberLive do
     |> assign(:member, member)
     |> assign(:page_title, User.display_name(member.user))
     |> assign(:account, MemberAccount.access(scope, [member], manage?))
+    |> assign(member_form: member_form(member), member_error: nil)
   end
 
   defp load_profile(socket) do
