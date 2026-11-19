@@ -314,7 +314,6 @@ defmodule TeacherAssistantWeb.School.MembersComponents do
       </div>
 
       <.form for={@form} id="member-form" phx-submit="save_member" class="space-y-4">
-        <input type="hidden" name="member_id" value={@member.id} />
         <.input
           :if={@renamable?}
           field={@form[:name]}
@@ -385,7 +384,6 @@ defmodule TeacherAssistantWeb.School.MembersComponents do
           type="button"
           class="btn btn-ghost min-h-11"
           phx-click="ask_reset_password"
-          phx-value-id={@member.id}
         >
           <.icon name="hero-key" class="size-4" />
           {gettext("Réinitialiser le mot de passe")}
@@ -403,7 +401,6 @@ defmodule TeacherAssistantWeb.School.MembersComponents do
           type="button"
           class="btn btn-ghost min-h-11 text-error"
           phx-click="deactivate_member"
-          phx-value-id={@member.id}
           data-confirm={gettext("Désactiver ce membre ?")}
         >
           <.icon name="hero-user-minus" class="size-4" />

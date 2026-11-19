@@ -162,6 +162,23 @@ defmodule TeacherAssistant.Accounts do
   end
 
   @doc """
+  One of this school's active members by membership id, with the user; nil when the
+  id is unknown, inactive, another school's, or not an id at all.
+  """
+  def get_member(%Scope{} = scope, id) do
+    case Ecto.UUID.cast(id) do
+      {:ok, id} ->
+        SchoolMembership
+        |> Ash.Query.for_read(:active_for_workspace, %{}, scope: scope)
+        |> Ash.Query.filter(id == ^id)
+        |> Ash.read_one!()
+
+      :error ->
+        nil
+    end
+  end
+
+  @doc """
   The operator journal, newest first (operator console spec §4). Operator only.
   Options: `workspace_id`, `action`, `limit` (default 50), `offset` (default 0).
   """

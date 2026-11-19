@@ -1,4 +1,4 @@
-// Manual-activation tabs: arrows move focus; Enter/Space activates the button.
+// Manual-activation tabs (links): arrows, Home and End move focus; Enter follows the tab.
 export const MemberProfileTabs = {
   mounted() {
     this.onKeydown = (event) => {

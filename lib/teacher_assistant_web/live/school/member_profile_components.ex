@@ -8,7 +8,7 @@ defmodule TeacherAssistantWeb.School.MemberProfileComponents do
 
   attr :member, :map, required: true
 
-  # The drawer's header already shows a phone-only account's number: its call
+  # The page's header already shows a phone-only account's number: its call
   # button then says « Appeler » instead of repeating it. The copy status is the
   # member's own, so a message never shows on the next member opened.
   def contact_actions(assigns) do
@@ -69,7 +69,9 @@ defmodule TeacherAssistantWeb.School.MemberProfileComponents do
 
   # Labels fit one line at 360px (« Résumé » stands for « Vue d'ensemble » on
   # phones). Each tab is a link to its own address, so the back button, a reload
-  # and a shared link land on the same tab; the bar sticks to the top of the page.
+  # and a shared link land on the same tab. The bar sticks under the phone header
+  # (`top-14`, its height) and to the top of the page on wide screens, on the
+  # page's own background.
   def profile_tabs(assigns) do
     assigns =
       assign(
@@ -89,7 +91,7 @@ defmodule TeacherAssistantWeb.School.MemberProfileComponents do
       phx-hook="MemberProfileTabs"
       role="tablist"
       aria-label={gettext("Fiche du membre")}
-      class="sticky top-0 z-10 flex gap-1 overflow-x-auto border-b border-base-300 bg-base-100"
+      class="sticky top-14 z-10 flex gap-1 overflow-x-auto border-b border-base-300 bg-base-200/95 backdrop-blur lg:top-0"
     >
       <.link
         :for={{value, short, long} <- @tabs}

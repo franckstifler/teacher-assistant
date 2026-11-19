@@ -291,7 +291,6 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
       {:ok, before} = Ash.get(Accounts.User, m.user_id, authorize?: false)
 
       render_submit(view, "save_member", %{
-        "member_id" => m.id,
         "member" => %{"name" => "Nom forgé"}
       })
 

@@ -28,7 +28,7 @@ defmodule TeacherAssistantWeb.School.MemberLive do
       not (manage? or service?) ->
         {:ok, socket |> Authz.put_not_allowed() |> push_navigate(to: ~p"/school/members")}
 
-      member = find_member(scope, id) ->
+      member = Accounts.get_member(scope, id) ->
         {:ok,
          socket
          |> assign(scope: scope, can_manage_staff?: manage?, can_set_service?: service?)
@@ -136,7 +136,7 @@ defmodule TeacherAssistantWeb.School.MemberLive do
   # stay open for hours on a phone) is not written to.
   def handle_event(event, params, socket)
       when event in ["save_member", "reset_password", "deactivate_member"] do
-    case find_member(socket.assigns.scope, socket.assigns.member.id) do
+    case Accounts.get_member(socket.assigns.scope, socket.assigns.member.id) do
       nil -> {:noreply, not_found(socket)}
       member -> change(event, params, assign(socket, :member, member))
     end
@@ -304,7 +304,7 @@ defmodule TeacherAssistantWeb.School.MemberLive do
   # After a change: the member as saved, with Résumé and the tabs recomputed (a new
   # service or role changes them), or the list when they are no longer here.
   defp reload_member(socket) do
-    case find_member(socket.assigns.scope, socket.assigns.member.id) do
+    case Accounts.get_member(socket.assigns.scope, socket.assigns.member.id) do
       nil -> not_found(socket)
       member -> socket |> assign_member(member) |> load_profile()
     end
@@ -325,13 +325,6 @@ defmodule TeacherAssistantWeb.School.MemberLive do
   end
 
   defp blank?(value), do: is_nil(value) or String.trim(value) == ""
-
-  # The same policy-checked read as the list: only this school's active members.
-  defp find_member(scope, id) do
-    scope
-    |> Accounts.list_members()
-    |> Enum.find(&(to_string(&1.id) == to_string(id)))
-  end
 
   defp assign_member(socket, member) do
     %{scope: scope, can_manage_staff?: manage?} = socket.assigns
