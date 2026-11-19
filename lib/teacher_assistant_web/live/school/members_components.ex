@@ -1,23 +1,21 @@
 defmodule TeacherAssistantWeb.School.MembersComponents do
   @moduledoc """
-  The Membres page's parts: a member's row (phones), the table's service and
-  access cells, the « Ajouter un membre » and member drawers, and the reset and
-  temporary-password dialogs. Events are handled by
-  `TeacherAssistantWeb.School.MembersLive`.
+  The Membres parts: a member's row (phones), the table's service and access
+  cells, the « Ajouter un membre » drawer, the member page's settings panel, the
+  reset and temporary-password dialogs, and the role/status form helpers. Events
+  are handled by `School.MembersLive` and `School.MemberLive`.
   """
   use TeacherAssistantWeb, :html
 
   alias TeacherAssistant.Accounts.{MembershipStatus, SchoolRole, User}
   alias TeacherAssistantWeb.Dates
 
-  import TeacherAssistantWeb.School.MemberProfileComponents
   import TeacherAssistantWeb.Drawer
   import TeacherAssistantWeb.Modal
 
   attr :member, :map, required: true
   attr :state, :map, default: nil, doc: "the account state; staff managers only"
-  attr :editable?, :boolean, required: true
-  attr :selected, :boolean, default: false
+  attr :editable?, :boolean, required: true, doc: "the row links to the member's page"
   attr :never?, :boolean, default: false, doc: "never signed in (staff managers only)"
 
   def member_row(assigns) do
@@ -25,9 +23,7 @@ defmodule TeacherAssistantWeb.School.MembersComponents do
     <.list_row
       id={"member-row-#{@member.id}"}
       title={User.display_name(@member.user)}
-      selected={@selected}
-      phx-click={@editable? && "edit_member"}
-      phx-value-id={@member.id}
+      navigate={if @editable?, do: ~p"/school/members/#{@member.id}"}
     >
       <:leading>
         <.initials_avatar name={User.display_name(@member.user)} class="size-10 text-sm" />
@@ -280,75 +276,6 @@ defmodule TeacherAssistantWeb.School.MembersComponents do
           phx-disable-with={gettext("Envoi…")}
         >
           {gettext("Inviter")}
-        </button>
-      </:footer>
-    </.drawer>
-    """
-  end
-
-  attr :member, :map, required: true
-  attr :form, Phoenix.HTML.Form, required: true
-  attr :error, :string, default: nil
-  attr :state, :map, default: nil
-  attr :resettable?, :boolean, required: true
-  attr :renamable?, :boolean, default: false, doc: "the school may correct the name"
-  attr :can_manage_staff?, :boolean, required: true
-  attr :can_set_service?, :boolean, required: true
-  attr :roles, :list, required: true, doc: "the roles ticked in `form`"
-
-  attr :profile, :any, required: true
-  attr :tab, :string, required: true
-  attr :day, :atom, default: nil
-  attr :today, :atom, default: nil, doc: "today's weekday"
-  attr :show_timetable?, :boolean, required: true
-
-  def member_drawer(assigns) do
-    ~H"""
-    <.drawer
-      id="member-drawer"
-      wide
-      eyebrow={gettext("Membre")}
-      title={User.display_name(@member.user)}
-      on_close={JS.push("close_drawer")}
-    >
-      <div class="flex items-center gap-3">
-        <.initials_avatar name={User.display_name(@member.user)} class="size-12 text-base" />
-        <div class="min-w-0 text-sm">
-          <p :if={User.contact(@member.user)} class={["truncate", !@member.user.email && "ta-num"]}>
-            {User.contact(@member.user)}
-          </p>
-          <p class="text-base-content/70">
-            {@member.roles |> Enum.map(&SchoolRole.label/1) |> Enum.join(", ")}
-          </p>
-        </div>
-      </div>
-
-      <.contact_actions member={@member} />
-      <.profile_tabs member_id={@member.id} tab={@tab} timetable?={@show_timetable?} />
-      <.academic_panels
-        profile={@profile}
-        member={@member}
-        tab={@tab}
-        timetable?={@show_timetable?}
-        day={@day}
-        today={@today}
-      />
-      <.member_settings
-        member={@member}
-        form={@form}
-        error={@error}
-        state={@state}
-        resettable?={@resettable?}
-        renamable?={@renamable?}
-        can_manage_staff?={@can_manage_staff?}
-        can_set_service?={@can_set_service?}
-        roles={@roles}
-        tab={@tab}
-      />
-
-      <:footer>
-        <button type="button" class="btn btn-ghost" phx-click="close_drawer">
-          {gettext("Fermer")}
         </button>
       </:footer>
     </.drawer>

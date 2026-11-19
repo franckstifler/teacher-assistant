@@ -3,14 +3,13 @@ defmodule TeacherAssistantWeb.School.MembersLive do
   Membres (UX refonte 2026-11-03 « Membres »): a table with checkboxes (Membre and
   contact, Rôles, Service, Accès) on wide screens, the list on phones; filter pills
   by role with counts and « Jamais connectés » (staff managers: `last_sign_in_at`
-  still nil); a selection bar that copies the selected members' numbers. The
-  member drawer includes teaching details and settings; administration keeps its permissions.
+  still nil); a selection bar that copies the selected members' numbers. A member's
+  row links to their page (`School.MemberLive`), so ctrl/⌘-click opens it in a new tab.
   """
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Accounts.{SchoolInvitation, SchoolRole, User}
   alias TeacherAssistant.{Accounts, Timetabling}
-  alias TeacherAssistant.Academics.{Reference, SchoolCalendar, TeacherProfile}
   alias TeacherAssistantWeb.Dates
   alias TeacherAssistantWeb.School.MemberAccount
 
@@ -33,18 +32,10 @@ defmodule TeacherAssistantWeb.School.MembersLive do
        |> assign(:selected, MapSet.new())
        |> assign(:invite_form, invite_form())
        |> assign(:account_form, account_form())
-       # nil | :add (the « Ajouter un membre » drawer) | :member (`@editing`)
+       # nil | :add (the « Ajouter un membre » drawer)
        |> assign(:panel, nil)
        |> assign(:add_method, :phone)
        |> assign(:add_error, nil)
-       |> assign(:member_profile, nil)
-       |> assign(:member_tab, "overview")
-       |> assign(:member_day, nil)
-       |> assign(:member_today, nil)
-       |> assign(:editing, nil)
-       |> assign(:member_form, nil)
-       |> assign(:member_error, nil)
-       |> assign(:reset_candidate, nil)
        |> assign(:temporary_password, nil)
        |> reload_members()}
     else
@@ -149,6 +140,7 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                 :for={m <- @visible_members}
                 id={"member-tr-#{m.id}"}
                 class={[
+                  (@can_manage_staff? or @can_set_service?) && "ta-row-open",
                   "transition-colors hover:bg-base-200/50",
                   MapSet.member?(@selected, m.id) && "bg-primary/8"
                 ]}
@@ -165,16 +157,14 @@ defmodule TeacherAssistantWeb.School.MembersLive do
                   />
                 </td>
                 <td class="min-w-0">
-                  <button
+                  <.link
                     :if={@can_manage_staff? or @can_set_service?}
                     id={"member-open-#{m.id}"}
-                    type="button"
-                    phx-click="edit_member"
-                    phx-value-id={m.id}
-                    class="text-left font-semibold hover:text-primary"
+                    navigate={~p"/school/members/#{m.id}"}
+                    class="ta-row-link font-semibold hover:text-primary"
                   >
                     {User.display_name(m.user)}
-                  </button>
+                  </.link>
                   <span :if={!(@can_manage_staff? or @can_set_service?)} class="font-semibold">
                     {User.display_name(m.user)}
                   </span>
@@ -211,7 +201,6 @@ defmodule TeacherAssistantWeb.School.MembersLive do
             state={@account_states[m.id]}
             never?={@can_manage_staff? and is_nil(m.user.last_sign_in_at)}
             editable?={@can_manage_staff? or @can_set_service?}
-            selected={@editing && @editing.id == m.id}
           />
         </div>
 
@@ -288,26 +277,6 @@ defmodule TeacherAssistantWeb.School.MembersLive do
           invite_form={@invite_form}
           roles={checked_roles(@account_form)}
         />
-
-        <.member_drawer
-          :if={@panel == :member and @editing}
-          member={@editing}
-          profile={@member_profile}
-          tab={@member_tab}
-          day={@member_day}
-          today={@member_today}
-          show_timetable?={show_member_timetable?(@scope, @editing, @member_profile)}
-          form={@member_form}
-          error={@member_error}
-          state={@account_states[@editing.id]}
-          resettable?={MapSet.member?(@resettable_member_ids, @editing.id)}
-          renamable?={MapSet.member?(@renamable_member_ids, @editing.id)}
-          can_manage_staff?={@can_manage_staff?}
-          can_set_service?={@can_set_service?}
-          roles={checked_roles(@member_form)}
-        />
-
-        <.confirm_reset_dialog :if={@reset_candidate} candidate={@reset_candidate} />
 
         <.temporary_password_dialog :if={@temporary_password} info={@temporary_password} />
       </section>
@@ -413,48 +382,6 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
   def handle_event("close_drawer", _params, socket), do: {:noreply, close_drawer(socket)}
 
-  def handle_event("edit_member", %{"id" => id}, socket) do
-    %{members: members, can_manage_staff?: manage?, can_set_service?: service?} = socket.assigns
-
-    case Enum.find(members, &(to_string(&1.id) == to_string(id))) do
-      %{} = m when manage? or service? ->
-        {:noreply,
-         socket
-         |> close_drawer()
-         |> assign(panel: :member, editing: m, member_form: member_form(m))
-         |> load_member_profile()}
-
-      _ ->
-        {:noreply, socket}
-    end
-  end
-
-  def handle_event("member_tab", %{"tab" => tab}, socket) do
-    a = socket.assigns
-
-    if a.editing && tab in ["overview", "settings", "timetable"] &&
-         (tab != "timetable" || show_member_timetable?(a.scope, a.editing, a.member_profile)) do
-      {:noreply, assign(socket, :member_tab, tab)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  def handle_event("member_day", %{"day" => value}, socket) do
-    case socket.assigns.member_profile do
-      {:ok, profile} ->
-        day = Enum.find(profile.days, &(Atom.to_string(&1) == value))
-        {:noreply, if(day, do: assign(socket, :member_day, day), else: socket)}
-
-      _ ->
-        {:noreply, socket}
-    end
-  end
-
-  def handle_event("retry_member_profile", _params, socket) do
-    {:noreply, if(socket.assigns.editing, do: load_member_profile(socket), else: socket)}
-  end
-
   # --- Events: adding a member ---------------------------------------------------------
 
   def handle_event("invite", %{"invite" => params}, socket) do
@@ -505,101 +432,6 @@ defmodule TeacherAssistantWeb.School.MembersLive do
     end
   end
 
-  # --- Events: one member ----------------------------------------------------------------
-
-  # One submit for the drawer's fields. The service is saved first (it is the
-  # only field that can be rejected as invalid input), then the roles (refused
-  # when they would leave the school without a head), then the status. Fields a
-  # member may not change are not rendered, so they are not in the params;
-  # policies still refuse a crafted request.
-  def handle_event("save_member", %{"member_id" => id} = params, socket) do
-    scope = socket.assigns.scope
-    attrs = Map.get(params, "member", %{})
-
-    with %{} = m <- find_membership(scope, id),
-         :ok <- save_name(scope, m, attrs),
-         {:ok, m} <- save_service(scope, m, attrs),
-         {:ok, m} <- save_roles(scope, m, attrs),
-         {:ok, _} <- save_status(scope, m, attrs) do
-      {:noreply,
-       socket
-       |> close_drawer()
-       |> reload_members()
-       |> put_flash(:info, gettext("Membre mis à jour."))}
-    else
-      nil ->
-        {:noreply, socket |> close_drawer() |> reload_members()}
-
-      {:error, %Ash.Error.Forbidden{}} ->
-        {:noreply, Authz.put_not_allowed(socket)}
-
-      {:error, :blank_name} ->
-        {:noreply,
-         member_error(socket, attrs, nil, name: {gettext("Indiquez le nom et le prénom."), []})}
-
-      {:error, :invalid_hours} ->
-        {:noreply,
-         member_error(socket, attrs, nil,
-           service: {gettext("Indiquez un nombre d'heures entre 1 et 40."), []}
-         )}
-
-      {:error, :last_head} ->
-        {:noreply,
-         member_error(
-           socket,
-           attrs,
-           gettext("Impossible de retirer le rôle de chef d'établissement du dernier chef.")
-         )}
-
-      {:error, _} ->
-        {:noreply,
-         member_error(socket, attrs, gettext("Impossible d'enregistrer les modifications."))}
-    end
-  end
-
-  def handle_event("ask_reset_password", %{"id" => id}, socket) do
-    case Enum.find(socket.assigns.members, &(to_string(&1.id) == to_string(id))) do
-      nil ->
-        {:noreply, socket}
-
-      m ->
-        {:noreply, assign(socket, :reset_candidate, %{id: m.id, name: User.display_name(m.user)})}
-    end
-  end
-
-  def handle_event("cancel_reset_password", _params, socket) do
-    {:noreply, assign(socket, :reset_candidate, nil)}
-  end
-
-  def handle_event("reset_password", %{"id" => id}, socket) do
-    scope = socket.assigns.scope
-    socket = assign(socket, :reset_candidate, nil)
-
-    with %{} = membership <- find_membership(scope, id),
-         {:ok, password} <- Accounts.reset_member_password(scope, membership) do
-      socket = reload_members(socket)
-
-      {:noreply,
-       assign(
-         socket,
-         :temporary_password,
-         MemberAccount.temporary_password_info(
-           scope,
-           reloaded_user(socket, membership.user_id),
-           password,
-           :reset
-         )
-       )}
-    else
-      {:error, %Ash.Error.Forbidden{}} ->
-        {:noreply, Authz.put_not_allowed(socket)}
-
-      _ ->
-        {:noreply,
-         put_flash(socket, :error, gettext("Impossible de réinitialiser le mot de passe."))}
-    end
-  end
-
   def handle_event("close_temporary_password", _params, socket) do
     {:noreply, assign(socket, :temporary_password, nil)}
   end
@@ -615,84 +447,6 @@ defmodule TeacherAssistantWeb.School.MembersLive do
       _ -> {:noreply, socket}
     end
   end
-
-  def handle_event("deactivate_member", %{"id" => id}, socket) do
-    scope = socket.assigns.scope
-
-    with %{} = membership <- find_membership(scope, id),
-         {:ok, _} <- Accounts.deactivate_member(scope, membership) do
-      {:noreply,
-       socket
-       |> close_drawer()
-       |> reload_members()
-       |> put_flash(:info, gettext("Membre désactivé."))}
-    else
-      {:error, :last_head} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           gettext("Impossible de désactiver le dernier chef d'établissement.")
-         )}
-
-      {:error, %Ash.Error.Forbidden{}} ->
-        {:noreply, Authz.put_not_allowed(socket)}
-
-      _ ->
-        {:noreply, socket}
-    end
-  end
-
-  defp save_service(scope, m, %{"service" => value}) when is_binary(value) do
-    value = String.trim(value)
-
-    if value == to_string(m.statutory_hours || ""),
-      do: {:ok, m},
-      else: Accounts.set_member_service(scope, m, value)
-  end
-
-  defp save_service(_scope, m, _attrs), do: {:ok, m}
-
-  # The name field shows only to those who may rename (the `:rename_by_school` policy
-  # decides); an unchanged name writes nothing. A member invited by e-mail may have no
-  # name yet: the field may stay empty, but a name is never erased.
-  defp save_name(scope, m, %{"name" => name}) when is_binary(name) do
-    cond do
-      blank?(name) and blank?(m.user.name) ->
-        :ok
-
-      blank?(name) ->
-        {:error, :blank_name}
-
-      Enum.join(String.split(name), " ") == m.user.name ->
-        :ok
-
-      true ->
-        with {:ok, _user} <- Accounts.rename_member(scope, m, name), do: :ok
-    end
-  end
-
-  defp save_name(_scope, _m, _attrs), do: :ok
-
-  defp save_roles(scope, m, %{"roles" => roles}) when is_list(roles) do
-    roles = parse_roles(roles)
-
-    if MapSet.new(roles) == MapSet.new(m.roles),
-      do: {:ok, m},
-      else: Accounts.update_member_roles(scope, m, roles)
-  end
-
-  defp save_roles(_scope, m, _attrs), do: {:ok, m}
-
-  defp save_status(scope, m, %{"status" => status}) when is_binary(status) do
-    status = parse_membership_status(status)
-
-    if status == m.status,
-      do: {:ok, m},
-      else: Accounts.update_member_status(scope, m, status)
-  end
-
-  defp save_status(_scope, m, _attrs), do: {:ok, m}
 
   defp create_account(socket, params) do
     attrs = %{
@@ -764,59 +518,13 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
   # --- Drawers -------------------------------------------------------------------------
 
-  # The page already knows whether the viewer may manage staff or set services
-  # (`TeacherProfile.allowed?/1`). The timetable opens on today when it is a
-  # school day, as « Mon emploi du temps » does.
-  defp load_member_profile(socket) do
-    %{scope: scope, editing: member} = socket.assigns
-    allowed? = socket.assigns.can_manage_staff? or socket.assigns.can_set_service?
-    profile = TeacherProfile.load(scope, member, allowed?: allowed?)
-    today = SchoolCalendar.weekday(Reference.today())
-
-    day =
-      case profile do
-        {:ok, %{days: days}} -> if(today in days, do: today, else: List.first(days))
-        _ -> nil
-      end
-
-    assign(socket, member_profile: profile, member_day: day, member_today: today)
-  end
-
-  defp show_member_timetable?(scope, member, profile) do
-    TeacherAssistant.Scope.module?(scope, :emploi_du_temps) &&
-      (:teacher in member.roles || match?({:ok, %{teaching?: true}}, profile))
-  end
-
-  defp close_drawer(socket) do
-    assign(socket,
-      panel: nil,
-      add_error: nil,
-      editing: nil,
-      member_profile: nil,
-      member_tab: "overview",
-      member_day: nil,
-      member_form: nil,
-      member_error: nil
-    )
-  end
+  defp close_drawer(socket), do: assign(socket, panel: nil, add_error: nil)
 
   # The account as reloaded after the change: its new temporary-password expiry.
   defp reloaded_user(socket, user_id),
     do: Enum.find_value(socket.assigns.members, fn m -> m.user_id == user_id && m.user end)
 
   defp add_error(socket, message), do: assign(socket, :add_error, message)
-
-  # Keeps the drawer open on the submitted values; a partial save (the service
-  # before a refused role change) is already in the reloaded list.
-  defp member_error(socket, attrs, message, errors \\ []) do
-    socket = reload_members(socket)
-    editing = Enum.find(socket.assigns.members, &(&1.id == socket.assigns.editing.id))
-
-    socket
-    |> assign(:editing, editing || socket.assigns.editing)
-    |> assign(:member_form, to_form(attrs, as: "member", errors: errors))
-    |> assign(:member_error, message)
-  end
 
   # --- Display helpers ----------------------------------------------------------------
 
@@ -879,20 +587,6 @@ defmodule TeacherAssistantWeb.School.MembersLive do
 
   defp account_form(params \\ %{}, errors \\ []) do
     to_form(params, as: "account", errors: errors)
-  end
-
-  # The drawer's fields span three actions (roles, status, statutory hours), each
-  # with its own policy and guard, so it is a plain form saved field by field.
-  defp member_form(m) do
-    to_form(
-      %{
-        "name" => m.user.name || "",
-        "roles" => Enum.map(m.roles, &to_string/1),
-        "status" => if(m.status, do: to_string(m.status), else: ""),
-        "service" => to_string(m.statutory_hours || "")
-      },
-      as: "member"
-    )
   end
 
   defp blank?(value), do: is_nil(value) or String.trim(value) == ""
@@ -996,12 +690,6 @@ defmodule TeacherAssistantWeb.School.MembersLive do
   defp find_invitation(scope, id) do
     scope
     |> Accounts.list_pending_invitations()
-    |> Enum.find(&(to_string(&1.id) == to_string(id)))
-  end
-
-  defp find_membership(scope, id) do
-    scope
-    |> Accounts.list_members()
     |> Enum.find(&(to_string(&1.id) == to_string(id)))
   end
 end

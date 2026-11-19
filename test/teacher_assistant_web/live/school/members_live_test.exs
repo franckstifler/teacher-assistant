@@ -103,8 +103,10 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
 
     assert has_element?(view, "#members-list")
     refute has_element?(view, "#open-add-member")
-    # a read-only list: no row opens an editor
+    # a read-only list: no row opens the member page
     refute has_element?(view, "button[id^='member-row-']")
+    refute has_element?(view, "a[id^='member-row-']")
+    refute has_element?(view, "[id^='member-open-']")
     render_click(view, "open_add", %{})
     refute has_element?(view, "#add-member-drawer")
     # colleagues' password state is for staff managers only
@@ -341,6 +343,20 @@ defmodule TeacherAssistantWeb.School.MembersLiveTest do
       refute has_element?(list, "#member-row-#{m.id}")
       refute Enum.any?(Accounts.list_members(scope), &(&1.id == m.id))
     end
+  end
+
+  test "a member row opens the member page through a link, never a click handler", %{
+    conn: conn,
+    scope: scope
+  } do
+    m = TeacherAssistant.TeacherFixtures.membership_fixture(scope)
+    {:ok, view, _html} = live(conn, ~p"/school/members")
+
+    assert has_element?(view, "tr#member-tr-#{m.id}.ta-row-open")
+    assert has_element?(view, "a#member-open-#{m.id}.ta-row-link[href='/school/members/#{m.id}']")
+    assert has_element?(view, "a#member-row-#{m.id}[href='/school/members/#{m.id}']")
+    refute has_element?(view, "[phx-click='edit_member']")
+    refute has_element?(view, "tr[phx-click]")
   end
 
   describe "search and role filter" do
