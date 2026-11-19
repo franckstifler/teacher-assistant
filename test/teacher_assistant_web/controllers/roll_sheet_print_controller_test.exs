@@ -26,6 +26,7 @@ defmodule TeacherAssistantWeb.RollSheetPrintControllerTest do
     {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
     {:ok, tc} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
     {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
+    :ok = TeacherAssistant.TeacherFixtures.backdate_enrollments!(cg.id)
     :ok = Attendance.build_default_periods(scope)
     [p1 | _] = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
 
@@ -63,6 +64,24 @@ defmodule TeacherAssistantWeb.RollSheetPrintControllerTest do
     # a phone lays it out (and prints it) at the landscape sheet's width
     assert body =~ ~s(<meta name="viewport" content="width=1123">)
     assert body =~ ~s(data-print)
+  end
+
+  test "days a student was not yet in the class print greyed", %{conn: conn, cg: cg} do
+    Ecto.Adapters.SQL.query!(
+      TeacherAssistant.Repo,
+      "UPDATE enrollments SET inserted_at = $1 WHERE class_group_id = $2",
+      [~N[2025-09-17 08:00:00], Ecto.UUID.dump!(cg.id)]
+    )
+
+    body =
+      conn
+      |> get(~p"/school/classes/#{cg.id}/roll-sheet/print?week=2025-09-17")
+      |> html_response(200)
+
+    assert body =~ "Awa"
+    assert body =~ "Inscrit·e le"
+    # Monday and Tuesday's cells for Awa are greyed, the rest of her row is not
+    assert body =~ ~s(class="away")
   end
 
   test "a holiday prints as a greyed band with its label", %{

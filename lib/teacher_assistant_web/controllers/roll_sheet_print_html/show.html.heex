@@ -25,6 +25,8 @@
       th.hours span { writing-mode: vertical-rl; transform: rotate(180deg); font-weight: normal; font-size: 7pt; }
       td.closed, th.closed { background: #e4e4e4; color: #555; font-style: italic; }
       td.closed span { writing-mode: vertical-rl; transform: rotate(180deg); }
+      td.away { background: repeating-linear-gradient(135deg, #e4e4e4 0 4px, #fff 4px 8px); }
+      td.name small { display: block; font-size: 0.7em; color: #555; }
       tr.visa td { height: 24px; font-style: italic; color: #555; }
       @page { size: A4 landscape; margin: 10mm; }
       @media print {
@@ -71,7 +73,9 @@
           <%!-- Students, then blank rows; the first row carries the closed days' bands. --%>
           <tr :for={{row, i} <- Enum.with_index(rows(sheet.week))}>
             <td class="num">{row.number}</td>
-            <td class="name">{row.student_name}</td>
+            <td class="name">
+              {row.student_name}<small :if={presence_note(row)}>{presence_note(row)}</small>
+            </td>
             <%= for day <- sheet.week.days do %>
               <%= cond do %>
                 <% day.closed -> %>
@@ -81,7 +85,7 @@
                 <% day.cells == [] -> %>
                   <td></td>
                 <% true -> %>
-                  <td :for={_cell <- day.cells}></td>
+                  <td :for={_cell <- day.cells} class={away(row, day.date) && "away"}></td>
               <% end %>
             <% end %>
           </tr>

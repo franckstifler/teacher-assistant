@@ -360,7 +360,7 @@ msgstr "students"
 #: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:38
 #: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:50
 #: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:76
-#: lib/teacher_assistant_web/controllers/roll_sheet_print_html/show.html.heex:50
+#: lib/teacher_assistant_web/controllers/roll_sheet_print_html/show.html.heex:52
 #: lib/teacher_assistant_web/live/school/bulletins_live.ex:1000
 #: lib/teacher_assistant_web/live/school/class_live.ex:239
 #: lib/teacher_assistant_web/live/school/correction_review_live.ex:547
@@ -371,7 +371,7 @@ msgstr "students"
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:385
 #: lib/teacher_assistant_web/live/school/fees_live.ex:547
 #: lib/teacher_assistant_web/live/school/register_live.ex:405
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:269
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:270
 #: lib/teacher_assistant_web/live/school/sanctions_live.ex:529
 #: lib/teacher_assistant_web/live/school/students_live.ex:356
 #: lib/teacher_assistant_web/live/teacher/marks_live.ex:1462
@@ -3708,7 +3708,7 @@ msgstr "parents to notify"
 #: lib/teacher_assistant_web/live/school/day_live.ex:764
 #: lib/teacher_assistant_web/live/school/day_live.ex:796
 #: lib/teacher_assistant_web/live/school/lesson_components.ex:118
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:417
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:432
 #, elixir-autogen, elixir-format
 msgid "À venir"
 msgstr "Upcoming"
@@ -6771,7 +6771,7 @@ msgstr "Invalid parent phone number."
 #: lib/teacher_assistant_web/controllers/class_list_print_html/roster.html.heex:62
 #: lib/teacher_assistant_web/controllers/class_list_print_html/working.html.heex:56
 #: lib/teacher_assistant_web/controllers/mark_sheet_print_html/show.html.heex:78
-#: lib/teacher_assistant_web/controllers/roll_sheet_print_html/show.html.heex:49
+#: lib/teacher_assistant_web/controllers/roll_sheet_print_html/show.html.heex:51
 #: lib/teacher_assistant_web/live/school/class_live.ex:238
 #: lib/teacher_assistant_web/live/teacher/marks_live.ex:1461
 #, elixir-autogen, elixir-format
@@ -8644,7 +8644,7 @@ msgstr "School years"
 
 #: lib/teacher_assistant_web/live/school/lesson_components.ex:105
 #: lib/teacher_assistant_web/live/school/my_day_live.ex:709
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:448
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:463
 #, elixir-autogen, elixir-format
 msgid "Appel fait"
 msgstr "Roll call done"
@@ -11085,7 +11085,7 @@ msgid "Trim %{n}"
 msgstr "Term %{n}"
 
 #: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:218
-#: lib/teacher_assistant_web/controllers/roll_sheet_print_html/show.html.heex:90
+#: lib/teacher_assistant_web/controllers/roll_sheet_print_html/show.html.heex:94
 #, elixir-autogen, elixir-format
 msgid "Visa"
 msgstr "Signature"
@@ -11548,12 +11548,12 @@ msgstr[1] "%{count} roll-call sheets not typed in"
 msgid "%{count} sur feuille"
 msgstr "%{count} on paper"
 
-#: lib/teacher_assistant_web/controllers/roll_sheet_print_html/show.html.heex:44
+#: lib/teacher_assistant_web/controllers/roll_sheet_print_html/show.html.heex:46
 #, elixir-autogen, elixir-format
 msgid "A = absent · R = retard"
 msgstr "A = absent · R = late"
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:428
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:443
 #, elixir-autogen, elixir-format
 msgid "Appel fait dans l'application"
 msgstr "Roll call taken in the app"
@@ -11574,7 +11574,7 @@ msgstr "Roll call on paper, to type in"
 msgid "Aucune classe"
 msgstr "No class"
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:393
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:408
 #, elixir-autogen, elixir-format
 msgid "Ces cours ont des absences mais pas « Appel fait » ; ils ne seront pas enregistrés :"
 msgstr "These lessons have absences but no “Roll call done”; they will not be saved:"
@@ -11584,7 +11584,7 @@ msgstr "These lessons have absences but no “Roll call done”; they will not b
 msgid "Chaque semaine, une feuille d'appel imprimée par classe, saisie par le surveillant. Chaque classe peut aussi le changer dans son cahier d'appel."
 msgstr "Every week, a printed roll-call sheet per class, typed in by the supervisor. Each class can also change it in its register."
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:261
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:262
 #, elixir-autogen, elixir-format
 msgid "Cliquez une case : vide → A → R. Cochez « Appel fait » quand le visa y est."
 msgstr "Click a cell: empty → A → R (late). Tick “Roll call done” when the teacher's initials are there."
@@ -11592,19 +11592,19 @@ msgstr "Click a cell: empty → A → R (late). Tick “Roll call done” when t
 #: lib/teacher_assistant_web/live/school/day_live.ex:806
 #: lib/teacher_assistant_web/live/school/my_day_live.ex:705
 #: lib/teacher_assistant_web/live/school/my_day_live.ex:715
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:457
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:458
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:472
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:473
 #, elixir-autogen, elixir-format
 msgid "Cours non assuré"
 msgstr "Lesson not held"
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:402
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:417
 #, elixir-autogen, elixir-format
 msgid "Enregistrer la semaine"
 msgstr "Save the week"
 
 #: lib/teacher_assistant_web/controllers/roll_sheet_print_html/show.html.heex:6
-#: lib/teacher_assistant_web/controllers/roll_sheet_print_html/show.html.heex:40
+#: lib/teacher_assistant_web/controllers/roll_sheet_print_html/show.html.heex:42
 #, elixir-autogen, elixir-format
 msgid "Feuille d'appel"
 msgstr "Roll-call sheet"
@@ -11630,7 +11630,7 @@ msgid "Feuilles d'appel : toutes saisies"
 msgstr "Roll-call sheets: all typed in"
 
 #: lib/teacher_assistant_web/live/school/register_live.ex:276
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:233
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:234
 #, elixir-autogen, elixir-format
 msgid "Imprimer la feuille"
 msgstr "Print the sheet"
@@ -11643,7 +11643,7 @@ msgstr "Print all sheets"
 #: lib/teacher_assistant_web/live/school/day_live.ex:621
 #: lib/teacher_assistant_web/live/school/day_live.ex:766
 #: lib/teacher_assistant_web/live/school/lesson_components.ex:124
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:467
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:482
 #, elixir-autogen, elixir-format
 msgid "Non assuré"
 msgstr "Not held"
@@ -11653,7 +11653,7 @@ msgstr "Not held"
 msgid "Plus aucune classe sur feuille : les appels non faits dans l'application seront signalés le jour même."
 msgstr "No class on paper any more: roll calls not taken in the app will be flagged the same day."
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:526
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:541
 #, elixir-autogen, elixir-format
 msgid "Renvoyé"
 msgstr "Sent home"
@@ -11664,22 +11664,22 @@ msgstr "Sent home"
 msgid "Saisir la feuille"
 msgstr "Type in the sheet"
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:239
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:240
 #, elixir-autogen, elixir-format
 msgid "Semaine affichée"
 msgstr "Week shown"
 
-#: lib/teacher_assistant_web/controllers/roll_sheet_print_html.ex:17
+#: lib/teacher_assistant_web/controllers/roll_sheet_print_html.ex:18
 #, elixir-autogen, elixir-format
 msgid "Semaine du %{from} au %{to}"
 msgstr "Week of %{from} to %{to}"
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:245
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:246
 #, elixir-autogen, elixir-format
 msgid "Semaine précédente"
 msgstr "Previous week"
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:255
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:256
 #, elixir-autogen, elixir-format
 msgid "Semaine suivante"
 msgstr "Next week"
@@ -11698,7 +11698,7 @@ msgstr "On paper"
 msgid "Sur feuille · à saisir"
 msgstr "On paper · to type in"
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:430
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:445
 #, elixir-autogen, elixir-format
 msgid "app"
 msgstr "app"
@@ -11709,7 +11709,7 @@ msgstr "app"
 msgid "sur feuille · à saisir"
 msgstr "on paper · to type in"
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:380
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:395
 #, elixir-autogen, elixir-format
 msgid "Sans « Appel fait », ces cours gardent la saisie déjà enregistrée :"
 msgstr "Without “Roll call done”, these lessons keep what was already typed in:"
@@ -16344,7 +16344,7 @@ msgstr "Taken by a colleague"
 msgid "à la place de %{subject} · %{teacher}"
 msgstr "instead of %{subject} · %{teacher}"
 
-#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:339
+#: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:354
 #, elixir-autogen, elixir-format
 msgid "Pas de cours de la classe à cette heure"
 msgstr "No lesson of the class at this hour"
@@ -16768,3 +16768,23 @@ msgstr "Late · %{minutes} min"
 #, elixir-autogen, elixir-format
 msgid "Le total compte les présences, retards et absences enregistrés pour chaque élève : un retard compte comme présent, un renvoi pour frais n’est pas compté."
 msgstr "The total counts each student's recorded presences, lates and absences: a late counts as present; being sent home for fees is not counted."
+
+#: lib/teacher_assistant_web/controllers/roll_sheet_print_html.ex:29
+#, elixir-autogen, elixir-format
+msgid "Inscrit·e le %{date}"
+msgstr "Joined on %{date}"
+
+#: lib/teacher_assistant_web/controllers/roll_sheet_print_html.ex:46
+#, elixir-autogen, elixir-format
+msgid "Parti·e"
+msgstr "Left"
+
+#: lib/teacher_assistant_web/controllers/roll_sheet_print_html.ex:32
+#, elixir-autogen, elixir-format
+msgid "Parti·e le %{date}"
+msgstr "Left on %{date}"
+
+#: lib/teacher_assistant_web/controllers/roll_sheet_print_html.ex:43
+#, elixir-autogen, elixir-format
+msgid "Pas encore inscrit·e"
+msgstr "Not yet in the class"

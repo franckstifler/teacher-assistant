@@ -42,6 +42,7 @@ defmodule TeacherAssistant.Workers.PaperSheetsOverdueTest do
     {:ok, cg} = Enrollment.create_class_group(scope, year, %{label: "6e A", level: "6ème"})
     {:ok, tc} = Curriculum.assign_teacher(scope, cg, head, %{subject: "Maths"})
     {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: "Awa", sex: :f})
+    :ok = TeacherAssistant.TeacherFixtures.backdate_enrollments!(cg.id)
     :ok = Attendance.build_default_periods(scope)
     [p1 | _] = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
 

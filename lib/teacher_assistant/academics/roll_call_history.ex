@@ -1,11 +1,9 @@
 defmodule TeacherAssistant.Academics.RollCallHistory do
   @moduledoc """
-  Saved roll calls for the signed-in teacher's course. An app roll call holds a mark
-  for every student on the class list that day, so a student with no mark in it was
-  not in the class then (added later, transferred in, or away): sessions show only
-  what was saved. Known gap: a paper sheet typed in later is saved against the class
-  list on the day it is typed (`PaperWeek`), so a student who left during that week
-  has no mark for the days before.
+  Saved roll calls for the signed-in teacher's course. A saved roll call (app, or a
+  paper sheet saved against each day's class by `PaperWeek`) holds a mark for every
+  student in the class that day, so a student with no mark in it was not in the class
+  then (added later, transferred in, or away): sessions show only what was saved.
   """
 
   require Ash.Query

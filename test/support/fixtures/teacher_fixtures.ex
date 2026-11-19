@@ -84,6 +84,21 @@ defmodule TeacherAssistant.TeacherFixtures do
     %{closed: closed, next: next}
   end
 
+  @doc """
+  Dates a class's enrollments as created on `on` (default 2025-09-01). The test clock
+  is frozen in 2025 while rows are created on the real clock, and a paper sheet counts
+  a student from the day their enrollment was created (`PaperWeek`).
+  """
+  def backdate_enrollments!(class_group_id, on \\ ~D[2025-09-01]) do
+    Ecto.Adapters.SQL.query!(
+      TeacherAssistant.Repo,
+      "UPDATE enrollments SET inserted_at = $1 WHERE class_group_id = $2",
+      [NaiveDateTime.new!(on, ~T[00:00:00]), Ecto.UUID.dump!(class_group_id)]
+    )
+
+    :ok
+  end
+
   @doc "Verifies the scope's school as a fresh operator (the only role allowed to)."
   def verify_school!(%Scope{} = scope) do
     operator = admin_user_fixture()

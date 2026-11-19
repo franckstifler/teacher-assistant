@@ -140,7 +140,8 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
     with {:ok, key} <- parse_key(params),
          %{} = lesson <- find_lesson(socket.assigns.week, key),
          false <- MapSet.member?(lesson.sent_home, id),
-         true <- id in Enum.map(socket.assigns.week.students, & &1.enrollment_id) do
+         %{} = student <- Enum.find(socket.assigns.week.students, &(&1.enrollment_id == id)),
+         nil <- RollSheetPrintHTML.away(student, lesson.date) do
       update_column(socket, params, fn column ->
         marks =
           case fun.(Map.get(column.marks, id)) do
@@ -309,10 +310,16 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
                 </tr>
               </thead>
               <tbody>
-                <tr :for={student <- @week.students}>
+                <tr :for={student <- @week.students} id={"student-#{student.enrollment_id}"}>
                   <td class="sticky left-0 z-10 max-w-48 truncate bg-base-100">
                     <span class="ta-num text-base-content/60">{student.number}</span>
                     {student.student_name}
+                    <span
+                      :if={RollSheetPrintHTML.presence_note(student)}
+                      class="block text-[0.7rem] text-base-content/60"
+                    >
+                      {RollSheetPrintHTML.presence_note(student)}
+                    </span>
                   </td>
                   <%= for day <- @week.days do %>
                     <td
@@ -325,12 +332,20 @@ defmodule TeacherAssistantWeb.School.RollSheetLive do
                       class="border-l border-base-300 p-0.5 text-center"
                     >
                       <.mark_cell
-                        :if={cell.lesson}
+                        :if={cell.lesson && !RollSheetPrintHTML.away(student, day.date)}
                         student={student}
                         lesson={cell.lesson}
                         col={@cols[key(cell.lesson)]}
                         column={Map.get(@columns, key(cell.lesson))}
                       />
+                      <%!-- Not in the class that day (added later, or gone): nothing is recorded. --%>
+                      <span
+                        :if={cell.lesson && RollSheetPrintHTML.away(student, day.date)}
+                        id={"away-#{student.enrollment_id}-#{day.date}-#{cell.period.id}"}
+                        class="mx-auto block h-9 min-w-9 rounded bg-[repeating-linear-gradient(135deg,var(--color-base-300)_0_4px,transparent_4px_8px)]"
+                        title={RollSheetPrintHTML.away(student, day.date)}
+                        aria-label={"#{student.student_name} · #{RollSheetPrintHTML.away(student, day.date)}"}
+                      ></span>
                       <%!-- No lesson of the class at this hour: nothing can be recorded. --%>
                       <span
                         :if={is_nil(cell.lesson)}

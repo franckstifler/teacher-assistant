@@ -32,6 +32,7 @@ defmodule TeacherAssistantWeb.School.RollSheetLiveTest do
     for name <- ["Awa", "Beti"],
         do: {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: name, sex: :f})
 
+    :ok = TeacherAssistant.TeacherFixtures.backdate_enrollments!(cg.id)
     [awa, beti] = for r <- Enrollment.list_roster(scope, cg), do: r.enrollment
     :ok = Attendance.build_default_periods(scope)
     [p1 | _] = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
@@ -88,6 +89,42 @@ defmodule TeacherAssistantWeb.School.RollSheetLiveTest do
     # No lesson of the class at 08:20 on Monday: nothing to type in there.
     assert has_element?(view, "#free-#{ctx.awa.id}-#{@monday}-#{p2.id}")
     refute has_element?(view, "#cell-#{ctx.awa.id}-#{@monday}-#{p2.id}")
+  end
+
+  test "a student added during the week has greyed cells before, and nothing saved there",
+       ctx do
+    {:ok, _} = Enrollment.add_student(ctx.scope, ctx.cg, %{full_name: "Chantal", sex: :f})
+
+    chantal =
+      Enum.find(Enrollment.list_roster(ctx.scope, ctx.cg), &(&1.student.full_name == "Chantal")).enrollment
+
+    Ecto.Adapters.SQL.query!(
+      TeacherAssistant.Repo,
+      "UPDATE enrollments SET inserted_at = $1 WHERE id = $2",
+      [~N[2025-09-16 08:00:00], Ecto.UUID.dump!(chantal.id)]
+    )
+
+    {:ok, view, _} = live(ctx.conn, ctx.path)
+    refute has_element?(view, cell(chantal, ctx.p1))
+
+    assert has_element?(
+             view,
+             "#away-#{chantal.id}-#{@monday}-#{ctx.p1.id}[title*='Pas encore inscrit']"
+           )
+
+    assert has_element?(view, "#student-#{chantal.id}", "Inscrit·e le")
+
+    # a crafted tap on that day changes nothing; the column saves the others only
+    render_click(view, "cycle", %{
+      "enrollment" => chantal.id,
+      "date" => Date.to_iso8601(@monday),
+      "period" => ctx.p1.id
+    })
+
+    view |> element("#done-#{@monday}-#{ctx.p1.id}") |> render_click()
+    view |> element("#save-week") |> render_click()
+    ids = ctx |> entries() |> Enum.map(& &1.enrollment_id)
+    assert Enum.sort(ids) == Enum.sort([ctx.awa.id, ctx.beti.id])
   end
 
   test "a cell cycles empty → A → R → empty", ctx do

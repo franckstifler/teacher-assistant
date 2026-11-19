@@ -34,6 +34,7 @@ defmodule TeacherAssistant.Academics.PaperWeekTest do
     for name <- ["Chantal", "Awa", "Beti"],
         do: {:ok, _} = Enrollment.add_student(scope, cg, %{full_name: name, sex: :f})
 
+    :ok = TeacherFixtures.backdate_enrollments!(cg.id)
     [awa, beti, chantal] = for r <- Enrollment.list_roster(scope, cg), do: r.enrollment
     :ok = Attendance.build_default_periods(scope)
     [p1 | _] = scope |> Attendance.list_periods() |> Enum.filter(&(&1.kind == :lesson))
@@ -132,6 +133,68 @@ defmodule TeacherAssistant.Academics.PaperWeekTest do
 
     assert %{state: :paper} =
              lesson(Attendance.paper_week(ctx.sg, ctx.cg, @monday), @monday, ctx.p1)
+  end
+
+  # The year's first week, already past on the test clock (Monday 2025-09-15).
+  @first_monday ~D[2025-09-08]
+  @first_tuesday ~D[2025-09-09]
+
+  defp joined!(enrollment, date) do
+    Ecto.Adapters.SQL.query!(
+      TeacherAssistant.Repo,
+      "UPDATE enrollments SET inserted_at = $1 WHERE id = $2",
+      [NaiveDateTime.new!(date, ~T[08:00:00]), Ecto.UUID.dump!(enrollment.id)]
+    )
+  end
+
+  test "a sheet typed after its week saves each day against that day's class", ctx do
+    for e <- [ctx.awa, ctx.beti, ctx.chantal], do: joined!(e, ~D[2025-09-01])
+    # Beti left on Tuesday; Chantal was added on Tuesday.
+    {:ok, _} =
+      TeacherAssistant.Enrollment.leave(ctx.scope, ctx.beti, %{
+        left_on: @first_tuesday,
+        departure_reason: :transfer
+      })
+
+    joined!(ctx.chantal, @first_tuesday)
+
+    week = Attendance.paper_week(ctx.sg, ctx.cg, @first_monday)
+    rows = Map.new(week.students, &{&1.enrollment_id, &1})
+    # Beti is still on that week's sheet, with her departure day; Chantal with her first day.
+    assert %{left_on: @first_tuesday, joined_on: nil} = rows[ctx.beti.id]
+    assert %{joined_on: @first_tuesday, left_on: nil} = rows[ctx.chantal.id]
+    assert %{joined_on: nil, left_on: nil} = rows[ctx.awa.id]
+
+    assert {:ok, %{saved: 2}} =
+             Attendance.save_paper_week(ctx.sg, ctx.cg, @first_monday, [
+               taken(@first_monday, ctx.p1, %{ctx.beti.id => :absent}),
+               taken(@first_tuesday, ctx.p1, %{ctx.chantal.id => :late})
+             ])
+
+    monday = entries(ctx, @first_monday)
+    assert Map.keys(monday) |> Enum.sort() == Enum.sort([ctx.awa.id, ctx.beti.id])
+    assert monday[ctx.beti.id].status == :absent
+
+    tuesday = entries(ctx, @first_tuesday)
+    assert Map.keys(tuesday) |> Enum.sort() == Enum.sort([ctx.awa.id, ctx.chantal.id])
+    assert tuesday[ctx.chantal.id].status == :late
+  end
+
+  test "a student who left before the week, or was added after it, is not on its sheet", ctx do
+    joined!(ctx.awa, ~D[2025-09-01])
+    joined!(ctx.chantal, @monday)
+
+    {:ok, _} =
+      TeacherAssistant.Enrollment.leave(ctx.scope, ctx.awa, %{
+        left_on: @first_monday,
+        departure_reason: :transfer
+      })
+
+    week = Attendance.paper_week(ctx.sg, ctx.cg, @first_monday)
+    ids = Enum.map(week.students, & &1.enrollment_id)
+    refute ctx.awa.id in ids
+    refute ctx.chantal.id in ids
+    assert Enum.map(week.students, & &1.number) == [1]
   end
 
   test "an empty ticked column records everyone present", ctx do
@@ -277,6 +340,7 @@ defmodule TeacherAssistant.Academics.PaperWeekTest do
       Enrollment.create_class_group(ctx.scope, ctx.year, %{label: "6e B", level: "6ème"})
 
     {:ok, _} = Enrollment.add_student(ctx.scope, cg2, %{full_name: "Dora", sex: :f})
+    :ok = TeacherFixtures.backdate_enrollments!(cg2.id)
     {:ok, tc2} = Curriculum.assign_teacher(ctx.scope, cg2, ctx.head, %{subject: "Anglais"})
     {:ok, tc1} = Curriculum.assign_teacher(ctx.scope, ctx.cg, ctx.head, %{subject: "Anglais"})
     {:ok, course} = Curriculum.combine_course(ctx.scope, [tc1, tc2])

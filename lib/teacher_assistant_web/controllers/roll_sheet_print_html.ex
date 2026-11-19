@@ -1,6 +1,7 @@
 defmodule TeacherAssistantWeb.RollSheetPrintHTML do
   use TeacherAssistantWeb, :html
 
+  alias TeacherAssistant.Academics.PaperWeek
   alias TeacherAssistantWeb.Dates
 
   embed_templates "roll_sheet_print_html/*"
@@ -22,6 +23,31 @@ defmodule TeacherAssistantWeb.RollSheetPrintHTML do
   @doc "« 07:30–08:20 », a column's head on the sheet and the entry screen."
   def period_hours(%{start_time: from, end_time: to}),
     do: "#{Calendar.strftime(from, "%H:%M")}–#{Calendar.strftime(to, "%H:%M")}"
+
+  @doc "« Inscrit·e le mar. 16 sept. » / « Parti·e le … » under a name; nil for a full week."
+  def presence_note(%{joined_on: %Date{} = on}),
+    do: gettext("Inscrit·e le %{date}", date: Dates.short(on))
+
+  def presence_note(%{left_on: %Date{} = on}),
+    do: gettext("Parti·e le %{date}", date: Dates.short(on))
+
+  def presence_note(_row), do: nil
+
+  @doc "Why a student has no cell that day, or nil when they are in class (`PaperWeek.in_class?/2`)."
+  def away(%{enrollment_id: _} = student, %Date{} = date) do
+    cond do
+      PaperWeek.in_class?(student, date) ->
+        nil
+
+      student.joined_on && Date.before?(date, student.joined_on) ->
+        gettext("Pas encore inscrit·e")
+
+      true ->
+        gettext("Parti·e")
+    end
+  end
+
+  def away(_blank_row, _date), do: nil
 
   # A closed day still takes one column, so its band shows.
   defp day_span(%{closed: nil, cells: cells}), do: max(length(cells), 1)

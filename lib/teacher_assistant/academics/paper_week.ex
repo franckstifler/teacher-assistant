@@ -9,8 +9,14 @@ defmodule TeacherAssistant.Academics.PaperWeek do
   A lesson's `state` is `:app` (taken in the app), `:paper` (typed in from a sheet),
   `:not_held` (« cours non assuré ») or `:empty`. Saving never touches an `:app`
   lesson, a closed day or a lesson outside the week; a ticked column records every
-  student of the roster — « A » absent, « R » late, sent home for fees `:sent_home`
-  whatever was typed, everyone else present.
+  student in class that day (`in_class?/2`) — « A » absent, « R » late, sent home for
+  fees `:sent_home` whatever was typed, everyone else present.
+
+  The week's students are everyone in the class at some point of it, so a sheet typed
+  in later is saved against each day's class (spec 2026-11-19): a student who left
+  mid-week keeps the days before `left_on`; one added mid-week (the enrollment's
+  creation day, `joined_on`) has nothing before it, as an app roll call those days
+  would have had.
   """
 
   require Ash.Query
@@ -29,7 +35,7 @@ defmodule TeacherAssistant.Academics.PaperWeek do
   def read(%Scope{} = scope, %ClassGroup{} = cg, %Date{} = date) do
     {monday, saturday} = PaperRollCall.week(date)
 
-    roster = Enrollment.list_roster(scope, cg)
+    roster = week_roster(scope, cg, monday, saturday)
     enrollment_ids = Enum.map(roster, & &1.enrollment.id)
 
     entries =
@@ -67,11 +73,40 @@ defmodule TeacherAssistant.Academics.PaperWeek do
         roster
         |> Enum.with_index(1)
         |> Enum.map(fn {r, n} ->
-          %{enrollment_id: r.enrollment.id, number: n, student_name: r.student.full_name}
+          joined_on = joined_on(r.enrollment)
+          left_on = r.enrollment.left_on
+
+          %{
+            enrollment_id: r.enrollment.id,
+            number: n,
+            student_name: r.student.full_name,
+            joined_on: if(Date.after?(joined_on, monday), do: joined_on),
+            left_on: if(left_on && not Date.after?(left_on, saturday), do: left_on)
+          }
         end),
       days: days
     }
   end
+
+  @doc "Whether a week's student (`read/3`) is in the class on `date`."
+  def in_class?(%{joined_on: joined_on, left_on: left_on}, %Date{} = date),
+    do:
+      (is_nil(joined_on) or not Date.before?(date, joined_on)) and
+        (is_nil(left_on) or Date.before?(date, left_on))
+
+  # Everyone in the class at some point of the week, in class-list order: not gone
+  # before Monday (`left_on` is the first day away) and added by Saturday.
+  defp week_roster(scope, cg, monday, saturday) do
+    scope
+    |> Enrollment.list_roster(cg, on: :all)
+    |> Enum.filter(fn %{enrollment: e} ->
+      (is_nil(e.left_on) or Date.after?(e.left_on, monday)) and
+        not Date.after?(joined_on(e), saturday)
+    end)
+  end
+
+  # Enrollments have no start date: the day it was created stands for it.
+  defp joined_on(enrollment), do: DateTime.to_date(enrollment.inserted_at)
 
   # A school day: its cells and the class's open lessons, or `closed` with the
   # holiday's name; nil when the school has no lessons that weekday.
@@ -153,7 +188,7 @@ defmodule TeacherAssistant.Academics.PaperWeek do
             {{lesson.date, lesson.period.id}, lesson}
           end
 
-        students = Enum.map(week.students, & &1.enrollment_id)
+        students = week.students
 
         TeacherAssistant.Repo.transaction(fn ->
           Enum.reduce(columns, %{saved: 0, not_held: 0, unmarked: 0}, fn column, acc ->
@@ -182,7 +217,7 @@ defmodule TeacherAssistant.Academics.PaperWeek do
 
   defp apply_column(scope, cg, lesson, %{mode: :taken, marks: typed}, students) do
     marks =
-      for id <- students do
+      for student <- students, in_class?(student, lesson.date), id = student.enrollment_id do
         cond do
           MapSet.member?(lesson.sent_home, id) -> {id, :sent_home}
           Map.get(typed, id) in [:absent, :late] -> {id, Map.fetch!(typed, id)}
