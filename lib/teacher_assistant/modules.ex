@@ -103,6 +103,7 @@ defmodule TeacherAssistant.Modules do
     W.School.StudentLive,
     W.School.EnrollImportLive,
     W.School.MembersLive,
+    W.School.MemberLive,
     W.School.SettingsLive,
     W.School.OfficialHeaderLive,
     W.School.RolesLive,
