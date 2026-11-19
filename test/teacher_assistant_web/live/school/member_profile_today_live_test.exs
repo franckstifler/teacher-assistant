@@ -42,9 +42,7 @@ defmodule TeacherAssistantWeb.School.MemberProfileTodayLiveTest do
       })
 
     conn = post(conn, ~p"/workspaces/select/#{school.id}")
-    {:ok, view, _} = live(conn, ~p"/school/members")
-    view |> element("#member-open-#{member.id}") |> render_click()
-    view |> element("#member-tab-timetable") |> render_click()
+    {:ok, view, _} = live(conn, ~p"/school/members/#{member.id}?tab=timetable")
 
     assert has_element?(view, "#member-day-wednesday[aria-pressed=true][aria-current=date]")
     assert has_element?(view, "#member-day-monday[aria-pressed=false]")

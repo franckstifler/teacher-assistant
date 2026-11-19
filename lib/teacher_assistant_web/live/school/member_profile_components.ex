@@ -1,5 +1,5 @@
 defmodule TeacherAssistantWeb.School.MemberProfileComponents do
-  @moduledoc "Teaching overview and timetable inside the member drawer."
+  @moduledoc "Teaching overview and timetable on the member page."
   use TeacherAssistantWeb, :html
   alias TeacherAssistant.Accounts.{MembershipStatus, Phone}
   alias TeacherAssistant.Academics.DayOfWeek
@@ -63,13 +63,13 @@ defmodule TeacherAssistantWeb.School.MemberProfileComponents do
     """
   end
 
+  attr :member_id, :string, required: true
   attr :tab, :string, required: true
   attr :timetable?, :boolean, required: true
 
   # Labels fit one line at 360px (« Résumé » stands for « Vue d'ensemble » on
-  # phones). The bar sticks to the top of the drawer's scroll area (`-top-5`
-  # makes up for its padding), so a tab opened further down never leaves it
-  # half hidden under the drawer's header.
+  # phones). Each tab is a link to its own address, so the back button, a reload
+  # and a shared link land on the same tab; the bar sticks to the top of the page.
   def profile_tabs(assigns) do
     assigns =
       assign(
@@ -89,20 +89,18 @@ defmodule TeacherAssistantWeb.School.MemberProfileComponents do
       phx-hook="MemberProfileTabs"
       role="tablist"
       aria-label={gettext("Fiche du membre")}
-      class="sticky -top-5 z-10 -mx-5 flex gap-1 overflow-x-auto border-b border-base-300 bg-base-100 px-5"
+      class="sticky top-0 z-10 flex gap-1 overflow-x-auto border-b border-base-300 bg-base-100"
     >
-      <button
+      <.link
         :for={{value, short, long} <- @tabs}
         id={"member-tab-#{value}"}
-        type="button"
+        patch={~p"/school/members/#{@member_id}?tab=#{value}"}
         role="tab"
         aria-selected={to_string(@tab == value)}
         aria-controls={"member-panel-#{value}"}
         tabindex={if @tab == value, do: "0", else: "-1"}
-        phx-click="member_tab"
-        phx-value-tab={value}
         class={[
-          "min-h-11 flex-1 whitespace-nowrap border-b-2 px-2 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-primary",
+          "flex min-h-11 flex-1 items-center justify-center whitespace-nowrap border-b-2 px-2 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-primary",
           if(@tab == value,
             do: "border-primary text-primary",
             else: "border-transparent text-base-content/70 hover:text-base-content"
@@ -110,7 +108,7 @@ defmodule TeacherAssistantWeb.School.MemberProfileComponents do
         ]}
       >
         <span class="sm:hidden">{short}</span><span class="hidden sm:inline">{long}</span>
-      </button>
+      </.link>
     </div>
     """
   end

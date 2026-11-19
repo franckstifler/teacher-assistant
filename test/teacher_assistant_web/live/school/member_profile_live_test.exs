@@ -66,10 +66,16 @@ defmodule TeacherAssistantWeb.School.MemberProfileLiveTest do
     }
   end
 
-  defp open(conn, member) do
-    {:ok, view, _} = live(conn, ~p"/school/members")
-    view |> element("#member-open-#{member.id}") |> render_click()
+  defp open(conn, member, query \\ "") do
+    {:ok, view, _} = live(conn, ~p"/school/members/#{member.id}" <> query)
     view
+  end
+
+  defp conn_for(c, member_scope) do
+    c.conn
+    |> recycle()
+    |> log_in_user(member_scope.current_user)
+    |> post(~p"/workspaces/select/#{c.school.id}")
   end
 
   test "overview includes assignments, hours and contact shortcuts", c do
@@ -84,12 +90,20 @@ defmodule TeacherAssistantWeb.School.MemberProfileLiveTest do
     assert has_element?(view, "#member-missing-hours", "3 h restent")
     assert has_element?(view, "#member-call[href='tel:+237677123456']")
     assert has_element?(view, "#member-copy-phone")
-    refute has_element?(view, "#member-drawer button[form=member-form]")
+    refute has_element?(view, "#member-panel-settings:not([hidden])")
+  end
+
+  test "the page is titled and crumbed with the member's name", c do
+    view = open(c.conn, c.member)
+    assert page_title(view) =~ "Awa Profile"
+    assert has_element?(view, "#member-page h1", "Awa Profile")
+    assert has_element?(view, "#member-breadcrumb a[href='/school/members']", "Membres")
   end
 
   test "timetable shows lessons, room and individual print link", c do
     view = open(c.conn, c.member)
     view |> element("#member-tab-timetable") |> render_click()
+    assert_patch(view, ~p"/school/members/#{c.member.id}?tab=timetable")
     assert has_element?(view, "#member-tab-timetable[aria-selected=true]")
     refute has_element?(view, "#member-panel-timetable[hidden]")
     assert has_element?(view, "#member-day-lessons", "Sciences du profil")
@@ -102,33 +116,43 @@ defmodule TeacherAssistantWeb.School.MemberProfileLiveTest do
            )
 
     view |> element("#member-day-tuesday") |> render_click()
+    assert_patch(view, ~p"/school/members/#{c.member.id}?tab=timetable&day=tuesday")
     assert has_element?(view, "#member-day-lessons", "Aucun cours ce jour")
     render_click(view, "member_day", %{"day" => "invalid"})
     assert has_element?(view, "#member-day-tuesday[aria-pressed=true]")
   end
 
+  test "a reload keeps the tab and the day", c do
+    view = open(c.conn, c.member, "?tab=timetable&day=tuesday")
+    assert has_element?(view, "#member-tab-timetable[aria-selected=true]")
+    assert has_element?(view, "#member-day-tuesday[aria-pressed=true]")
+  end
+
+  test "an unknown tab or day falls back", c do
+    view = open(c.conn, c.member, "?tab=nope&day=garbage")
+    assert has_element?(view, "#member-tab-overview[aria-selected=true]")
+
+    # The test clock (`Reference.today/0`) is Monday 2025-09-15; no Sunday column.
+    view = open(c.conn, c.member, "?tab=timetable&day=sunday")
+    assert has_element?(view, "#member-day-monday[aria-pressed=true]")
+  end
+
   test "settings remain mounted and only show save on the settings tab", c do
     view = open(c.conn, c.member)
     view |> element("#member-tab-settings") |> render_click()
-    assert has_element?(view, "#member-drawer button[form=member-form]")
+    assert_patch(view, ~p"/school/members/#{c.member.id}?tab=settings")
+    assert has_element?(view, "#member-form button[type=submit]")
     refute has_element?(view, "#member-panel-settings[hidden]")
     assert has_element?(view, "#member-name[value='Awa Profile']")
     view |> element("#member-tab-overview") |> render_click()
-    assert has_element?(view, "#member-panel-settings[hidden] #member-form")
-    render_click(view, "member_tab", %{"tab" => "unknown"})
-    assert has_element?(view, "#member-tab-overview[aria-selected=true]")
+    assert has_element?(view, "#member-panel-settings[hidden] #member-form button[type=submit]")
   end
 
-  test "changing member resets the tab and does not keep prior assignments", c do
-    view = open(c.conn, c.member)
-    view |> element("#member-tab-timetable") |> render_click()
+  test "each member's page shows only that member's assignments", c do
     colleague = TeacherFixtures.member_scope_fixture(c.scope, %{roles: [:teacher]})
-    # Reopen the page to include the new member in the authorized list.
-    {:ok, view, _} = live(c.conn, ~p"/school/members")
-    view |> element("#member-open-#{c.member.id}") |> render_click()
-    view |> element("#member-tab-settings") |> render_click()
     {:ok, other} = Accounts.fetch_school_membership(c.scope, colleague.current_user)
-    render_click(view, "edit_member", %{"id" => other.id})
+    assert has_element?(open(c.conn, c.member), "#member-assignments", "Sciences du profil")
+    view = open(c.conn, other)
     assert has_element?(view, "#member-tab-overview[aria-selected=true]")
     assert has_element?(view, "#member-assignments", "Aucune matière affectée")
     refute has_element?(view, "#member-assignments", "Sciences du profil")
@@ -144,34 +168,41 @@ defmodule TeacherAssistantWeb.School.MemberProfileLiveTest do
       |> log_in_user(vp.current_user)
       |> post(~p"/workspaces/select/#{c.school.id}")
 
-    view = open(conn, c.member)
+    view = open(conn, c.member, "?tab=settings")
     assert has_element?(view, "#member-assignments", "Sciences du profil")
-    view |> element("#member-tab-settings") |> render_click()
     assert has_element?(view, "#member-service")
     refute has_element?(view, "#member-account")
     refute has_element?(view, "#reset-password-#{c.member.id}")
   end
 
-  test "ordinary teacher cannot open another member by crafted event", c do
-    ordinary = TeacherFixtures.member_scope_fixture(c.scope, %{roles: [:teacher]})
+  test "an ordinary teacher is refused and sent back to the list", c do
+    conn = conn_for(c, TeacherFixtures.member_scope_fixture(c.scope, %{roles: [:teacher]}))
 
-    conn =
-      c.conn
-      |> recycle()
-      |> log_in_user(ordinary.current_user)
-      |> post(~p"/workspaces/select/#{c.school.id}")
-
-    {:ok, view, _} = live(conn, ~p"/school/members")
-    render_click(view, "edit_member", %{"id" => c.member.id})
-    refute has_element?(view, "#member-drawer")
-    render_click(view, "retry_member_profile")
-    refute has_element?(view, "#member-drawer")
+    assert {:error, {:live_redirect, %{to: "/school/members"}}} =
+             live(conn, ~p"/school/members/#{c.member.id}")
   end
 
-  test "unknown member ID cannot open a drawer", c do
-    {:ok, view, _} = live(c.conn, ~p"/school/members")
-    render_click(view, "edit_member", %{"id" => Ash.UUID.generate()})
-    refute has_element?(view, "#member-drawer")
+  test "an unknown, foreign or deactivated member is not found", c do
+    {:ok, elsewhere} =
+      Organization.create_school(%TeacherAssistant.Scope{current_user: c.scope.current_user}, %{
+        name: "Autre école"
+      })
+
+    elsewhere_scope = school_scope(c.scope.current_user, elsewhere)
+    {:ok, foreign} = Accounts.fetch_school_membership(elsewhere_scope, c.scope.current_user)
+
+    {:ok, %{user: leaver}} =
+      Accounts.add_member_by_phone(c.scope, %{name: "Paul Parti", phone: "677999888"})
+
+    {:ok, gone} = Accounts.fetch_school_membership(c.scope, leaver)
+    {:ok, _} = Accounts.deactivate_member(c.scope, gone)
+
+    for id <- [Ash.UUID.generate(), foreign.id, gone.id, "garbage"] do
+      assert {:error, {:live_redirect, %{to: "/school/members", flash: flash}}} =
+               live(c.conn, ~p"/school/members/#{id}")
+
+      assert flash["error"] == "Membre introuvable."
+    end
   end
 
   test "profile error leaves settings available and offers retry" do
@@ -228,14 +259,25 @@ defmodule TeacherAssistantWeb.School.MemberProfileLiveTest do
     refute has_element?(view, "#member-manage-assignments")
     refute has_element?(view, "[data-profile-message]")
 
-    view |> element("#member-tab-settings") |> render_click()
-
     view
     |> form("#member-form", %{"member" => %{"status" => "titulaire"}})
     |> render_submit()
 
-    refute has_element?(view, "#member-drawer")
-    assert has_element?(view, "#member-row-#{membership.id}", "Titulaire")
+    assert has_element?(view, "#member-page", "Titulaire")
+  end
+
+  test "the timetable tab is ignored for a member who does not teach", c do
+    {:ok, %{user: bursar}} =
+      Accounts.add_member_by_phone(c.scope, %{
+        name: "Paul Intendant",
+        phone: "677555444",
+        roles: [:bursar]
+      })
+
+    {:ok, membership} = Accounts.fetch_school_membership(c.scope, bursar)
+    view = open(c.conn, membership, "?tab=timetable")
+    assert has_element?(view, "#member-tab-overview[aria-selected=true]")
+    refute has_element?(view, "#member-panel-timetable")
   end
 
   test "subjects are grouped once, with each class's placed hours and over-placement flagged",
@@ -285,8 +327,7 @@ defmodule TeacherAssistantWeb.School.MemberProfileLiveTest do
         teaching_context_id: tc2.id
       })
 
-    view = open(c.conn, c.member)
-    view |> element("#member-tab-timetable") |> render_click()
+    view = open(c.conn, c.member, "?tab=timetable")
     assert has_element?(view, "#member-clash-monday-#{c.period.id}", "Conflit d'horaire")
     assert has_element?(view, "#member-day-lessons [data-clash]")
     refute has_element?(view, "#member-clash-tuesday-#{c.period.id}")
@@ -294,8 +335,7 @@ defmodule TeacherAssistantWeb.School.MemberProfileLiveTest do
 
   test "the day strip uses short labels and opens on today, a school day", c do
     # The test clock (`Reference.today/0`) is Monday 2025-09-15.
-    view = open(c.conn, c.member)
-    view |> element("#member-tab-timetable") |> render_click()
+    view = open(c.conn, c.member, "?tab=timetable")
     assert has_element?(view, "#member-day-strip[role=group]")
     assert has_element?(view, "#member-day-monday[aria-pressed=true][aria-current=date]", "Lun")
     refute has_element?(view, "#member-day-tuesday[aria-current]")
@@ -314,9 +354,7 @@ defmodule TeacherAssistantWeb.School.MemberProfileLiveTest do
 
     colleague = TeacherFixtures.member_scope_fixture(c.scope, %{roles: [:teacher]})
     {:ok, other} = Accounts.fetch_school_membership(c.scope, colleague.current_user)
-    {:ok, view, _} = live(c.conn, ~p"/school/members")
-    view |> element("#member-open-#{c.member.id}") |> render_click()
-    render_click(view, "edit_member", %{"id" => other.id})
+    view = open(c.conn, other)
     assert has_element?(view, "#member-copy-status-#{other.id}")
     refute has_element?(view, "#member-copy-status-#{c.member.id}")
   end

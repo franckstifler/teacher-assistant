@@ -324,7 +324,7 @@ defmodule TeacherAssistantWeb.School.MembersComponents do
       </div>
 
       <.contact_actions member={@member} />
-      <.profile_tabs tab={@tab} timetable?={@show_timetable?} />
+      <.profile_tabs member_id={@member.id} tab={@tab} timetable?={@show_timetable?} />
       <.academic_panels
         profile={@profile}
         member={@member}
