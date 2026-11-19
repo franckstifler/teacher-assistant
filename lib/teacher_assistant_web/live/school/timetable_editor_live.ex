@@ -20,6 +20,8 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
   use TeacherAssistantWeb, :live_view
 
   alias TeacherAssistant.Accounts.User
+  alias TeacherAssistantWeb.School.MemberLinks
+  import MemberLinks, only: [member_name: 1]
   alias TeacherAssistant.{Accounts, Attendance, Curriculum, Enrollment, Organization, Timetabling}
 
   alias TeacherAssistant.Academics.{
@@ -47,6 +49,7 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
        assign(socket,
          year: year,
          classes: classes,
+         member_ids: MemberLinks.member_ids(scope),
          calendar: calendar,
          periods: Attendance.list_periods(scope),
          cg: nil,
@@ -823,11 +826,11 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLive do
               <h2 class="font-semibold">
                 {DayOfWeek.label(d)} · {p.label} {hm(p.start_time)}–{hm(p.end_time)} · {@cg.label}
               </h2>
-              <p class="text-sm">
-                {if slot,
-                  do: "#{slot.subject} — #{slot.teacher_name}",
-                  else: gettext("Créneau libre")}
+              <p :if={slot} class="text-sm">
+                {slot.subject} —
+                <.member_name ids={@member_ids} user_id={slot.teacher_id} name={slot.teacher_name} />
               </p>
+              <p :if={!slot} class="text-sm">{gettext("Créneau libre")}</p>
 
               <%= if slot && clash?(@clashes, @cg, d, pid) do %>
                 <p

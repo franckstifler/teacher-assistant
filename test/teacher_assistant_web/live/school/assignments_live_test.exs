@@ -45,6 +45,16 @@ defmodule TeacherAssistantWeb.School.AssignmentsLiveTest do
     assert Curriculum.assignment_at(ctx.scope, ctx.cg, ctx.maths.id) == nil
   end
 
+  test "a teacher's load links to their member page", %{conn: conn} = ctx do
+    {:ok, _} = Curriculum.place_assignment(ctx.scope, ctx.cg, ctx.maths, ctx.other.user_id, "4")
+    {:ok, view, _} = live(conn, ~p"/school/settings/assignments")
+
+    assert has_element?(
+             view,
+             "#load-#{ctx.other.user_id} a[href='/school/members/#{ctx.other.id}']"
+           )
+  end
+
   test "removing an assignment with marks is refused", %{conn: conn} = ctx do
     {:ok, tc} = Curriculum.place_assignment(ctx.scope, ctx.cg, ctx.maths, ctx.other.user_id, "4")
     [seq | _] = Organization.list_sequences(ctx.scope, ctx.scope.current_academic_year)

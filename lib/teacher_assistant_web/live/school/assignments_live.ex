@@ -6,6 +6,9 @@ defmodule TeacherAssistantWeb.School.AssignmentsLive do
   """
   use TeacherAssistantWeb, :live_view
 
+  alias TeacherAssistantWeb.School.MemberLinks
+  import MemberLinks, only: [member_name: 1]
+
   alias TeacherAssistant.{Accounts, Curriculum, Enrollment}
   alias TeacherAssistant.Academics.AssignmentGrid
 
@@ -31,7 +34,12 @@ defmodule TeacherAssistantWeb.School.AssignmentsLive do
   defp load(socket) do
     grid = Curriculum.assignment_overview(socket.assigns.current_scope)
     users = Map.new(grid.members, &{&1.user_id, &1.user})
-    assign(socket, grid: grid, users: users)
+
+    assign(socket,
+      grid: grid,
+      users: users,
+      member_ids: MemberLinks.member_ids(socket.assigns.current_scope)
+    )
   end
 
   # --- events ---------------------------------------------------------------
@@ -407,7 +415,12 @@ defmodule TeacherAssistantWeb.School.AssignmentsLive do
                 class="space-y-1"
               >
                 <div class="flex justify-between text-sm">
-                  <span class="truncate">{name(@users, id)}</span>
+                  <.member_name
+                    ids={@member_ids}
+                    user_id={id}
+                    name={name(@users, id)}
+                    class="truncate"
+                  />
                   <span class={["ta-num", l.over? && "text-error"]}>{l.load} h / {l.service} h</span>
                 </div>
                 <div class="h-1.5 rounded bg-base-200">

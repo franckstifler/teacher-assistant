@@ -175,6 +175,13 @@ defmodule TeacherAssistantWeb.School.MemberProfileLiveTest do
     refute has_element?(view, "#reset-password-#{c.member.id}")
   end
 
+  test "member links are only for those who may open a member", c do
+    alias TeacherAssistantWeb.School.MemberLinks
+    assert MemberLinks.member_ids(c.scope)[c.teacher.id] == c.member.id
+    ordinary = TeacherFixtures.member_scope_fixture(c.scope, %{roles: [:teacher]})
+    assert MemberLinks.member_ids(ordinary) == %{}
+  end
+
   test "an ordinary teacher is refused and sent back to the list", c do
     conn = conn_for(c, TeacherFixtures.member_scope_fixture(c.scope, %{roles: [:teacher]}))
 

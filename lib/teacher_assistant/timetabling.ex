@@ -367,6 +367,7 @@ defmodule TeacherAssistant.Timetabling do
       combined_course_id: slot.teaching_context.combined_course_id,
       subject: slot.teaching_context.subject,
       teacher_name: User.display_name(slot.teaching_context.teacher),
+      teacher_id: slot.teaching_context.teacher_user_id,
       day: slot.day,
       period_id: slot.period_id,
       class_group_id: slot.class_group_id,

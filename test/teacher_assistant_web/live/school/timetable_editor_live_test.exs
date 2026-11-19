@@ -147,6 +147,20 @@ defmodule TeacherAssistantWeb.School.TimetableEditorLiveTest do
 
   defp hm(t), do: Calendar.strftime(t, "%H:%M")
 
+  test "a placed lesson's teacher links to their member page", %{conn: conn, actor: head} = ctx do
+    {:ok, _} =
+      Timetabling.place_slot(ctx.scope, ctx.a, %{
+        day: :monday,
+        period_id: ctx.p1.id,
+        teaching_context_id: ctx.ma.id
+      })
+
+    {:ok, member} = TeacherAssistant.Accounts.fetch_school_membership(ctx.scope, head)
+    {:ok, view, _} = live(conn, ~p"/school/timetable?class=#{ctx.a.id}")
+    view |> element("#cell-monday-#{ctx.p1.id}") |> render_click()
+    assert has_element?(view, "#cell-panel a[href='/school/members/#{member.id}']")
+  end
+
   test "clearing a cell", %{conn: conn} = ctx do
     {:ok, _} =
       Timetabling.place_slot(ctx.scope, ctx.a, %{

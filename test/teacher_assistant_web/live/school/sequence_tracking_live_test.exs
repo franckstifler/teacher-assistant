@@ -168,6 +168,22 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLiveTest do
            )
   end
 
+  test "a teacher's name links to their member page", %{conn: conn, scope: scope} = ctx do
+    {:ok, english} = TeacherAssistant.Accounts.fetch_school_membership(scope, ctx.english)
+    {:ok, head} = TeacherAssistant.Accounts.fetch_school_membership(scope, ctx.head)
+
+    {:ok, view, _} = live(conn, ~p"/school/sequences")
+
+    assert has_element?(
+             view,
+             "#teacher-#{ctx.english.id} a[href='/school/members/#{english.id}']"
+           )
+
+    {:ok, view, _} = live(conn, ~p"/school/sequences?view=classes")
+    view |> element(col(view, ctx.cg, "Maths")) |> render_click()
+    assert has_element?(view, "#cell-detail a[href='/school/members/#{head.id}']")
+  end
+
   test "the teachers who started nothing are ticked on arrival", %{conn: conn} = ctx do
     {:ok, view, _} = live(conn, ~p"/school/sequences?seq=#{ctx.seq.id}")
 

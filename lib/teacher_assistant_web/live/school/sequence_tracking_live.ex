@@ -8,6 +8,9 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
   """
   use TeacherAssistantWeb, :live_view
 
+  alias TeacherAssistantWeb.School.MemberLinks
+  import MemberLinks, only: [member_name: 1]
+
   alias TeacherAssistant.Accounts.User
   alias TeacherAssistant.{Assessment, Organization, Pilotage, ReportCards}
   alias TeacherAssistant.Academics.{Lock, MissingMarksReport, Reference}
@@ -55,6 +58,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
            view: "teachers",
            q: "",
            picked: MapSet.new(),
+           member_ids: MemberLinks.member_ids(scope),
            loading?: false
          )}
     end
@@ -606,6 +610,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
             picked={@picked}
             reminders={@reminders}
             competences?={@competences != nil}
+            member_ids={@member_ids}
           />
 
           <.subject_table
@@ -631,6 +636,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
               detail={@detail}
               competences={@competences}
               reminders={@reminders}
+              member_ids={@member_ids}
             />
           </div>
 
@@ -799,6 +805,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
   attr :picked, :any, required: true
   attr :reminders, :map, required: true
   attr :competences?, :boolean, required: true
+  attr :member_ids, :map, required: true
 
   defp teacher_table(assigns) do
     pickable = for t <- assigns.teachers, pickable?(t, assigns.reminders), do: t.id
@@ -858,7 +865,12 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
               />
             </td>
             <td class="min-w-0">
-              <span class="block font-semibold">{t.name}</span>
+              <.member_name
+                ids={@member_ids}
+                user_id={t.id}
+                name={t.name}
+                class="block font-semibold"
+              />
               <span class="block text-xs text-base-content/70">{Enum.join(t.subjects, ", ")}</span>
               <span
                 :if={reminded_today?(@reminders, t)}
@@ -1105,6 +1117,7 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
   attr :reminders, :map, required: true
 
   attr :focused?, :boolean, default: false
+  attr :member_ids, :map, required: true
 
   defp cell_detail(assigns) do
     ~H"""
@@ -1115,9 +1128,12 @@ defmodule TeacherAssistantWeb.School.SequenceTrackingLive do
       <span class="ta-eyebrow">
         {@detail.class_group.label} · {@detail.subject.label}
       </span>
-      <span class="font-display text-[1.15rem] font-semibold">
-        {teacher_name(@detail.cell.teacher)}
-      </span>
+      <.member_name
+        ids={@member_ids}
+        user_id={@detail.cell.teacher && @detail.cell.teacher.id}
+        name={teacher_name(@detail.cell.teacher)}
+        class="font-display text-[1.15rem] font-semibold"
+      />
       <.detail_line
         label={gettext("Notes saisies")}
         value={"#{@detail.cell.entered} / #{@detail.cell.expected}"}
