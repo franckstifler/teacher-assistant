@@ -91,6 +91,40 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLiveTest do
     assert has_element?(view, "#history-student-#{c.context.id}-#{a.id}", "1/1 présents")
   end
 
+  test "repeated absences use saved absent marks in the selected sequence", c do
+    date = c.first.start_date
+    a = student(c.scope, c.class, "Awa", date)
+    b = student(c.scope, c.class, "Bella", date)
+    record(c.scope, c.context, a, c.period, date, :absent)
+    record(c.scope, c.context, a, c.next, date, :absent, %{justified: true})
+    record(c.scope, c.context, a, c.period, Date.add(date, 1), :absent)
+    record(c.scope, c.context, a, c.next, Date.add(date, 1), :late)
+    record(c.scope, c.context, b, c.period, date, :absent)
+    record(c.scope, c.context, b, c.next, date, :absent)
+    record(c.scope, c.context, b, c.period, Date.add(date, 1), :sent_home)
+    record(c.scope, c.context, b, c.period, c.second.start_date, :absent)
+
+    {:ok, view, _} =
+      live(c.conn, ~p"/school/courses/#{c.context.id}/roll-calls?seq=#{c.first.id}&view=students")
+
+    a_row = "#history-student-#{c.context.id}-#{a.id}"
+    b_row = "#history-student-#{c.context.id}-#{b.id}"
+    assert has_element?(view, b_row)
+    view |> element("#history-repeated-absences") |> render_click()
+    assert has_element?(view, "#history-repeated-absences[aria-pressed=true]")
+    assert has_element?(view, a_row, "1/4 présents")
+    assert has_element?(view, a_row, "3 absences (1 justifiées)")
+    assert has_element?(view, a_row <> " li", "Absence justifiée")
+    refute has_element?(view, b_row)
+
+    view |> form("#history-absence-filter", %{"minimum" => "2"}) |> render_change()
+    assert has_element?(view, b_row)
+    view |> form("#history-sequence-form", %{"seq" => c.second.id}) |> render_change()
+    assert has_element?(view, "#history-absence-empty")
+    view |> element("#history-repeated-absences") |> render_click()
+    assert has_element?(view, b_row, "0/1 présents")
+  end
+
   test "a dated assessment filters the saved periods and handles a day with no roll call", c do
     a = student(c.scope, c.class, "Awa", c.first.start_date)
     date = Date.add(c.first.start_date, 1)

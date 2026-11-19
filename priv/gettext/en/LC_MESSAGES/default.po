@@ -188,7 +188,7 @@ msgstr "Roster"
 #: lib/teacher_assistant_web/live/school/conduct_live.ex:272
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:219
 #: lib/teacher_assistant_web/live/school/results_live.ex:124
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:62
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:88
 #: lib/teacher_assistant_web/live/school/sequence_tracking_live.ex:460
 #: lib/teacher_assistant_web/live/teacher/marks_live.ex:1170
 #: lib/teacher_assistant_web/live/teacher/marks_live.ex:1691
@@ -1434,7 +1434,7 @@ msgstr "Absent"
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:43
 #: lib/teacher_assistant_web/live/school/my_day_live.ex:140
 #: lib/teacher_assistant_web/live/school/register_live.ex:39
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:21
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:30
 #: lib/teacher_assistant_web/live/school/roll_sheet_live.ex:29
 #, elixir-autogen, elixir-format
 msgid "Access denied."
@@ -2464,7 +2464,7 @@ msgstr "Lycée bilingue de Nkolbisson"
 #: lib/teacher_assistant_web/live/school/courses_live.ex:33
 #: lib/teacher_assistant_web/live/school/courses_live.ex:206
 #: lib/teacher_assistant_web/live/school/dashboard_live.ex:342
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:45
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:71
 #: lib/teacher_assistant_web/live/teacher/marks_live.ex:1150
 #: lib/teacher_assistant_web/spaces.ex:491
 #, elixir-autogen, elixir-format
@@ -7575,7 +7575,7 @@ msgstr[1] "%{count} marks to enter before %{date}"
 msgid "%{n} h par semaine"
 msgstr "%{n} h per week"
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:247
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:321
 #: lib/teacher_assistant_web/live/teacher/marks_components.ex:183
 #: lib/teacher_assistant_web/live/teacher/marks_components.ex:492
 #: lib/teacher_assistant_web/live/teacher/marks_components.ex:596
@@ -16501,17 +16501,17 @@ msgstr "Select an academic year to view assignments and the timetable."
 msgid "Une heure correspond à une période de cours de l'école. Un cours regroupé compte une seule fois."
 msgstr "An hour means one school lesson period. A combined course counts only once."
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:261
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:335
 #, elixir-autogen, elixir-format
 msgid "%{late} retards · %{absent} absences (%{justified} justifiées) · %{unmarked} non marqués · %{sent_home} renvois"
 msgstr "%{late} late · %{absent} absent (%{justified} justified) · %{unmarked} unmarked · %{sent_home} sent home"
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:253
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:327
 #, elixir-autogen, elixir-format
 msgid "%{present} présents · %{late} retards · %{absent} absences"
 msgstr "%{present} on time · %{late} late · %{absent} absent"
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:244
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:318
 #, elixir-autogen, elixir-format
 msgid "%{present}/%{total} présents"
 msgstr "%{present}/%{total} present"
@@ -16521,70 +16521,70 @@ msgstr "%{present}/%{total} present"
 msgid "Appels"
 msgstr "Roll calls"
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:90
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:116
 #, elixir-autogen, elixir-format
 msgid "Appels des jours d’évaluation"
 msgstr "Roll calls on assessment days"
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:130
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:156
 #, elixir-autogen, elixir-format
 msgid "Aucun appel enregistré pour cette période."
 msgstr "No roll calls were saved for this period."
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:241
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:315
 #, elixir-autogen, elixir-format
 msgid "Aucun pointage comptabilisé"
 msgstr "No attendance marks counted"
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:188
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:240
 #, elixir-autogen, elixir-format
 msgid "Aucun élève pour cette période."
 msgstr "No students for this period."
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:119
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:145
 #, elixir-autogen, elixir-format
 msgid "Aucune séquence configurée pour cette année scolaire."
 msgstr "No sequences configured for this academic year."
 
 #: lib/teacher_assistant_web/live/school/courses_live.ex:377
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:8
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:48
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:71
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:13
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:74
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:97
 #, elixir-autogen, elixir-format
 msgid "Historique des appels"
 msgstr "Roll-call history"
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:181
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:207
 #, elixir-autogen, elixir-format
 msgid "Le total inclut les présences, retards et absences enregistrés pour chaque élève. Les périodes sans statut sont exclues."
 msgstr "The total includes saved present, late and absent marks for each student. Unmarked periods are excluded."
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:246
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:320
 #, elixir-autogen, elixir-format
 msgid "Non marqué"
 msgstr "Unmarked"
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:75
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:101
 #, elixir-autogen, elixir-format
 msgid "Par séance"
 msgstr "By lesson"
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:75
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:101
 #, elixir-autogen, elixir-format
 msgid "Par élève"
 msgstr "By student"
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:141
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:167
 #, elixir-autogen, elixir-format
 msgid "Semaine du %{date}"
 msgstr "Week of %{date}"
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:232
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:306
 #, elixir-autogen, elixir-format
 msgid "Séquence %{number} (%{first} au %{last})"
 msgstr "Sequence %{number} (%{first} to %{last})"
 
-#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:112
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:138
 #, elixir-autogen, elixir-format
 msgid "Voir toute la séquence"
 msgstr "View full sequence"
@@ -16723,3 +16723,18 @@ msgstr "no assessment yet"
 #, elixir-autogen, elixir-format
 msgid "Membre introuvable."
 msgstr "Member not found."
+
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:219
+#, elixir-autogen, elixir-format
+msgid "Absences répétées"
+msgstr "Repeated absences"
+
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:248
+#, elixir-autogen, elixir-format
+msgid "Aucun élève n’atteint ce seuil d’absence."
+msgstr "No students meet this absence threshold."
+
+#: lib/teacher_assistant_web/live/school/roll_call_history_live.ex:231
+#, elixir-autogen, elixir-format
+msgid "Nombre minimum d’absences"
+msgstr "Minimum absences"

@@ -4,8 +4,17 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLive do
   alias TeacherAssistant.Academics.{AttendanceStatus, RollCallHistory}
   alias TeacherAssistantWeb.Dates
 
-  def mount(_params, _session, socket),
-    do: {:ok, assign(socket, page_title: gettext("Historique des appels"))}
+  @absence_thresholds 2..10
+  @default_absence_threshold 3
+
+  def mount(_params, _session, socket) do
+    {:ok,
+     assign(socket,
+       page_title: gettext("Historique des appels"),
+       repeated_absences?: false,
+       absence_threshold: @default_absence_threshold
+     )}
+  end
 
   def handle_params(%{"id" => id} = params, _uri, socket) do
     case RollCallHistory.load(socket.assigns.current_scope, id, params) do
@@ -13,7 +22,7 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLive do
         view =
           if params["view"] == "students" and is_nil(history.date), do: :students, else: :sessions
 
-        {:noreply, assign(socket, history: history, view: view)}
+        {:noreply, socket |> assign(history: history, view: view) |> assign_visible_students()}
 
       {:error, :not_found} ->
         {:noreply,
@@ -29,7 +38,24 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLive do
     {:noreply, push_patch(socket, to: history_path(history.context.id, selected, view))}
   end
 
+  def handle_event("toggle_repeated_absences", _params, socket),
+    do: {:noreply, socket |> update(:repeated_absences?, &(!&1)) |> assign_visible_students()}
+
+  def handle_event("absence_threshold", %{"minimum" => value}, socket) when is_binary(value) do
+    case Integer.parse(value) do
+      {threshold, ""} when threshold in @absence_thresholds ->
+        {:noreply, socket |> assign(:absence_threshold, threshold) |> assign_visible_students()}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("absence_threshold", _params, socket), do: {:noreply, socket}
+
   def render(assigns) do
+    assigns = assign(assigns, :absence_thresholds, @absence_thresholds)
+
     ~H"""
     <Layouts.app
       flash={@flash}
@@ -182,13 +208,48 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLive do
               "Le total inclut les présences, retards et absences enregistrés pour chaque élève. Les périodes sans statut sont exclues."
             )}
           </p>
+          <div class="flex flex-wrap items-end gap-3">
+            <button
+              type="button"
+              id="history-repeated-absences"
+              phx-click="toggle_repeated_absences"
+              aria-pressed={to_string(@repeated_absences?)}
+              class={["btn min-h-11", if(@repeated_absences?, do: "btn-primary", else: "btn-outline")]}
+            >
+              {gettext("Absences répétées")}
+            </button>
+            <form
+              :if={@repeated_absences?}
+              id="history-absence-filter"
+              phx-change="absence_threshold"
+              class="min-w-0"
+            >
+              <.input
+                type="select"
+                name="minimum"
+                id="history-absence-threshold"
+                label={gettext("Nombre minimum d’absences")}
+                value={@absence_threshold}
+                options={Enum.map(@absence_thresholds, &{Integer.to_string(&1), &1})}
+              />
+            </form>
+          </div>
           <.empty_state
             :if={@history.students == []}
             icon="hero-user-group"
             title={gettext("Aucun élève pour cette période.")}
           />
+          <div
+            :if={@repeated_absences? && @visible_students == [] && @history.students != []}
+            id="history-absence-empty"
+          >
+            <.empty_state
+              icon="hero-user-group"
+              title={gettext("Aucun élève n’atteint ce seuil d’absence.")}
+            />
+          </div>
           <details
-            :for={student <- @history.students}
+            :for={student <- @visible_students}
             id={"history-student-#{student.context_id}-#{student.id}"}
             class="ta-section px-4"
           >
@@ -214,6 +275,19 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLive do
     </Layouts.app>
     """
   end
+
+  # « Absences répétées » keeps the students with at least the chosen number of
+  # absences in the selected séquence.
+  defp assign_visible_students(%{assigns: %{repeated_absences?: true} = a} = socket),
+    do:
+      assign(
+        socket,
+        :visible_students,
+        Enum.filter(a.history.students, &(&1.absent >= a.absence_threshold))
+      )
+
+  defp assign_visible_students(socket),
+    do: assign(socket, :visible_students, socket.assigns.history.students)
 
   defp history_path(id, sequence, view, date \\ nil) do
     params =
