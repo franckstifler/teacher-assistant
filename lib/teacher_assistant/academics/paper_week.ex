@@ -14,9 +14,10 @@ defmodule TeacherAssistant.Academics.PaperWeek do
 
   The week's students are everyone in the class at some point of it, so a sheet typed
   in later is saved against each day's class (spec 2026-11-19): a student who left
-  mid-week keeps the days before `left_on`; one added mid-week (the enrollment's
-  creation day, `joined_on`) has nothing before it, as an app roll call those days
-  would have had.
+  mid-week keeps the days before `left_on`; one added mid-week (the day their
+  enrollment was entered, `joined_on`) has nothing before it, as an app roll call those
+  days would have had. Students entered with the class (its first day in Scolaka)
+  count from the year's start.
   """
 
   require Ash.Query
@@ -73,14 +74,14 @@ defmodule TeacherAssistant.Academics.PaperWeek do
         roster
         |> Enum.with_index(1)
         |> Enum.map(fn {r, n} ->
-          joined_on = joined_on(r.enrollment)
+          joined_on = r.joined_on
           left_on = r.enrollment.left_on
 
           %{
             enrollment_id: r.enrollment.id,
             number: n,
             student_name: r.student.full_name,
-            joined_on: if(Date.after?(joined_on, monday), do: joined_on),
+            joined_on: if(joined_on && Date.after?(joined_on, monday), do: joined_on),
             left_on: if(left_on && not Date.after?(left_on, saturday), do: left_on)
           }
         end),
@@ -95,18 +96,31 @@ defmodule TeacherAssistant.Academics.PaperWeek do
         (is_nil(left_on) or Date.before?(date, left_on))
 
   # Everyone in the class at some point of the week, in class-list order: not gone
-  # before Monday (`left_on` is the first day away) and added by Saturday.
+  # before Monday (`left_on` is the first day away) and arrived by Saturday. Each row
+  # gains `joined_on`, nil for a student entered with the class (see `arrival/2`).
   defp week_roster(scope, cg, monday, saturday) do
-    scope
-    |> Enrollment.list_roster(cg, on: :all)
-    |> Enum.filter(fn %{enrollment: e} ->
+    roster = Enrollment.list_roster(scope, cg, on: :all)
+    first_day = roster |> Enum.map(&entered_on(&1.enrollment)) |> Enum.min(Date, fn -> nil end)
+
+    roster
+    |> Enum.map(&Map.put(&1, :joined_on, arrival(&1.enrollment, first_day)))
+    |> Enum.filter(fn %{enrollment: e, joined_on: joined_on} ->
       (is_nil(e.left_on) or Date.after?(e.left_on, monday)) and
-        not Date.after?(joined_on(e), saturday)
+        (is_nil(joined_on) or not Date.after?(joined_on, saturday))
     end)
   end
 
-  # Enrollments have no start date: the day it was created stands for it.
-  defp joined_on(enrollment), do: DateTime.to_date(enrollment.inserted_at)
+  # Enrollments have no start date: the day one was entered in Scolaka stands for it,
+  # except for the class's first entry (setup or import, often well into the year),
+  # whose students count from the year's start (spec 2026-11-19).
+  defp arrival(enrollment, first_day) do
+    case entered_on(enrollment) do
+      ^first_day -> nil
+      day -> day
+    end
+  end
+
+  defp entered_on(enrollment), do: DateTime.to_date(enrollment.inserted_at)
 
   # A school day: its cells and the class's open lessons, or `closed` with the
   # holiday's name; nil when the school has no lessons that weekday.

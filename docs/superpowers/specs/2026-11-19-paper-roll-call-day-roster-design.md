@@ -25,6 +25,11 @@ saved roll call marking exactly the class of that day, so these gaps became invi
   greyed « pas encore inscrit(e) » and save nothing, as an app roll call those days
   would have done. Accepted risk: a student attending before being entered in Scolaka
   loses those days.
+- **The class's first entry** (the user's choice after the browser check, 2026-11-19):
+  students entered on the class's first day in Scolaka (its setup or import, often
+  weeks into the year) count from the year's start, so a school that joins mid-year
+  keeps full sheets for its earlier weeks. Only students entered after that day are
+  treated as arriving mid-year.
 - **Saving** a ticked column writes marks only for students in class on that lesson's
   day; a crafted cycle on a greyed cell is ignored.
 - **Printed sheet**: rows as above; greyed cells for days a student is not in class.

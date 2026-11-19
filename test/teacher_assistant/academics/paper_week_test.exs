@@ -180,6 +180,33 @@ defmodule TeacherAssistant.Academics.PaperWeekTest do
     assert tuesday[ctx.chantal.id].status == :late
   end
 
+  test "students entered with the class (its first day in Scolaka) count from the year's start",
+       ctx do
+    # The whole class was entered on Friday 12, after the year's first week; Dora
+    # joined later, on Tuesday 16.
+    :ok = TeacherFixtures.backdate_enrollments!(ctx.cg.id, ~D[2025-09-12])
+    {:ok, _} = Enrollment.add_student(ctx.scope, ctx.cg, %{full_name: "Dora", sex: :f})
+
+    dora =
+      Enum.find(Enrollment.list_roster(ctx.scope, ctx.cg), &(&1.student.full_name == "Dora")).enrollment
+
+    joined!(dora, @tuesday)
+
+    first_week = Attendance.paper_week(ctx.sg, ctx.cg, @first_monday)
+    assert Enum.map(first_week.students, & &1.student_name) == ["Awa", "Beti", "Chantal"]
+    assert Enum.all?(first_week.students, &is_nil(&1.joined_on))
+
+    assert {:ok, %{saved: 1}} =
+             Attendance.save_paper_week(ctx.sg, ctx.cg, @first_monday, [
+               taken(@first_monday, ctx.p1)
+             ])
+
+    assert map_size(entries(ctx, @first_monday)) == 3
+
+    week = Attendance.paper_week(ctx.sg, ctx.cg, @monday)
+    assert %{joined_on: @tuesday} = Enum.find(week.students, &(&1.enrollment_id == dora.id))
+  end
+
   test "a student who left before the week, or was added after it, is not on its sheet", ctx do
     joined!(ctx.awa, ~D[2025-09-01])
     joined!(ctx.chantal, @monday)
@@ -340,7 +367,6 @@ defmodule TeacherAssistant.Academics.PaperWeekTest do
       Enrollment.create_class_group(ctx.scope, ctx.year, %{label: "6e B", level: "6ème"})
 
     {:ok, _} = Enrollment.add_student(ctx.scope, cg2, %{full_name: "Dora", sex: :f})
-    :ok = TeacherFixtures.backdate_enrollments!(cg2.id)
     {:ok, tc2} = Curriculum.assign_teacher(ctx.scope, cg2, ctx.head, %{subject: "Anglais"})
     {:ok, tc1} = Curriculum.assign_teacher(ctx.scope, ctx.cg, ctx.head, %{subject: "Anglais"})
     {:ok, course} = Curriculum.combine_course(ctx.scope, [tc1, tc2])

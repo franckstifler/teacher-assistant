@@ -66,11 +66,14 @@ defmodule TeacherAssistantWeb.RollSheetPrintControllerTest do
     assert body =~ ~s(data-print)
   end
 
-  test "days a student was not yet in the class print greyed", %{conn: conn, cg: cg} do
+  test "days a student was not yet in the class print greyed", %{conn: conn, cg: cg, scope: scope} do
+    # Bella joined on Wednesday 17, after the class was entered.
+    {:ok, bella} = Enrollment.add_student(scope, cg, %{full_name: "Bella", sex: :f})
+
     Ecto.Adapters.SQL.query!(
       TeacherAssistant.Repo,
-      "UPDATE enrollments SET inserted_at = $1 WHERE class_group_id = $2",
-      [~N[2025-09-17 08:00:00], Ecto.UUID.dump!(cg.id)]
+      "UPDATE enrollments SET inserted_at = $1 WHERE student_id = $2",
+      [~N[2025-09-17 08:00:00], Ecto.UUID.dump!(bella.id)]
     )
 
     body =
@@ -78,9 +81,9 @@ defmodule TeacherAssistantWeb.RollSheetPrintControllerTest do
       |> get(~p"/school/classes/#{cg.id}/roll-sheet/print?week=2025-09-17")
       |> html_response(200)
 
-    assert body =~ "Awa"
+    assert body =~ "Bella"
     assert body =~ "Inscrit·e le"
-    # Monday and Tuesday's cells for Awa are greyed, the rest of her row is not
+    # Monday and Tuesday's cells for Bella are greyed
     assert body =~ ~s(class="away")
   end
 
