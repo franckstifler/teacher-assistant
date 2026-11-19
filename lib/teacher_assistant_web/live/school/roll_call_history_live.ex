@@ -214,7 +214,7 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLive do
           />
           <p :if={@history.sessions != []} class="text-sm text-base-content/75">
             {gettext(
-              "Le total inclut les présences, retards et absences enregistrés pour chaque élève. Les périodes sans statut sont exclues."
+              "Le total compte les présences, retards et absences enregistrés pour chaque élève : un retard compte comme présent, un renvoi pour frais n’est pas compté."
             )}
           </p>
           <div :if={@history.sessions != []} class="flex flex-wrap items-end gap-3">
@@ -249,7 +249,10 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLive do
             title={gettext("Aucun élève pour cette période.")}
           />
           <div
-            :if={@repeated_absences? && @visible_students == [] && @history.students != []}
+            :if={
+              @repeated_absences? && @history.sessions != [] && @visible_students == [] &&
+                @history.students != []
+            }
             id="history-absence-empty"
           >
             <.empty_state
@@ -271,7 +274,10 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLive do
                 class="mt-1 block text-xs text-base-content/70"
               >{student_counts(student)}</span>
             </summary>
-            <p :if={exceptions(student.history) == []} class="pb-3 text-sm text-base-content/70">
+            <p
+              :if={student.history != [] && exceptions(student.history) == []}
+              class="pb-3 text-sm text-base-content/70"
+            >
               {gettext("Aucune absence ni aucun retard.")}
             </p>
             <ul :if={exceptions(student.history) != []} class="divide-y divide-base-300 pb-2">
@@ -329,10 +335,11 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLive do
   defp presence(%{total: 0}), do: gettext("Aucun pointage comptabilisé")
 
   # A late student is in the room: « présents » counts them, out of those present,
-  # late or absent (a renvoi pour frais is apart), as in the per-student ratio.
+  # late or absent (a renvoi pour frais is apart), as in the per-student ratio. The
+  # agreement follows the present count (« 1/30 présent », « 2/30 présents »).
   defp presence(%{present: present, total: total}),
     do:
-      ngettext("%{present}/%{total} présent", "%{present}/%{total} présents", total,
+      ngettext("%{present}/%{total} présent", "%{present}/%{total} présents", present,
         present: present,
         total: total
       )

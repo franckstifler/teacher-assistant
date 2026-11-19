@@ -86,7 +86,11 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLiveTest do
     assert has_element?(view, "#history-session-#{d}-#{c.period.id}", "Absence justifiée")
     view |> element("#history-view-students") |> render_click()
     assert has_element?(view, "#history-student-#{c.context.id}-#{a.id}", "2/3 présents")
-    assert has_element?(view, "#history-student-#{c.context.id}-#{newcomer.id}", "Aucun pointage")
+    newcomer_row = "#history-student-#{c.context.id}-#{newcomer.id}"
+    assert has_element?(view, newcomer_row, "Aucun pointage")
+    refute has_element?(view, newcomer_row, "Aucune absence ni aucun retard")
+    assert has_element?(view, "#history-students", "un retard compte comme présent")
+    refute has_element?(view, "#history-students", "sans statut")
     view |> form("#history-sequence-form", %{"seq" => c.second.id}) |> render_change()
     assert has_element?(view, "#history-student-#{c.context.id}-#{a.id}", "1/1 présent")
   end
@@ -162,6 +166,20 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLiveTest do
     refute has_element?(view, esther, "1 absences")
   end
 
+  test "the repeated-absences filter on a séquence without roll calls shows one empty state",
+       c do
+    a = student(c.scope, c.class, "Awa", c.first.start_date)
+    record(c.scope, c.context, a, c.period, c.first.start_date, :absent)
+
+    {:ok, view, _} =
+      live(c.conn, ~p"/school/courses/#{c.context.id}/roll-calls?seq=#{c.first.id}&view=students")
+
+    view |> element("#history-repeated-absences") |> render_click()
+    view |> form("#history-sequence-form", %{"seq" => c.second.id}) |> render_change()
+    assert has_element?(view, "#history-students", "Aucun appel enregistré pour cette période.")
+    refute has_element?(view, "#history-absence-empty")
+  end
+
   test "« Par élève » with no roll call in the séquence says so instead of listing everyone",
        c do
     a = student(c.scope, c.class, "Awa", c.first.start_date)
@@ -195,7 +213,9 @@ defmodule TeacherAssistantWeb.School.RollCallHistoryLiveTest do
     assert has_element?(view, b_row)
     view |> element("#history-repeated-absences") |> render_click()
     assert has_element?(view, "#history-repeated-absences[aria-pressed=true]")
-    assert has_element?(view, a_row, "1/4 présents")
+    # French agreement follows the present count: « 1/4 présent »
+    assert has_element?(view, a_row, "1/4 présent")
+    refute has_element?(view, a_row, "1/4 présents")
     assert has_element?(view, a_row, "3 absences (1 justifiée)")
     assert has_element?(view, a_row <> " li", "Absence justifiée")
     refute has_element?(view, b_row)
