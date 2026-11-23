@@ -208,6 +208,18 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     refute has_element?(view, "#note-form-#{enrollment.id}")
   end
 
+  test "links to « Bilan des absences » with its class and period", %{
+    conn: conn,
+    cg: cg
+  } do
+    {:ok, view, _html} = live(conn, ~p"/school/classes/#{cg.id}/discipline")
+
+    assert has_element?(
+             view,
+             "#absence-totals-link[href^='/school/absence-totals?'][href*='class=#{cg.id}'][href*='period=seq']"
+           )
+  end
+
   test "the period selector reloads the sanctions log", %{
     conn: _conn,
     school: school,
@@ -273,6 +285,7 @@ defmodule TeacherAssistantWeb.School.DisciplineLiveTest do
     refute has_element?(view, "#delete-sanction-#{enrollment.id}")
     # Read only: no way to the conduct entry page.
     refute has_element?(view, "#conduct-link")
+    refute has_element?(view, "#absence-totals-link")
 
     view
     |> render_hook("add_sanction", %{

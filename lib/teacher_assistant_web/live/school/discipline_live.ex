@@ -208,6 +208,15 @@ defmodule TeacherAssistantWeb.School.DisciplineLive do
             <.icon name="hero-clock" class="size-4" />
             {gettext("Heures d'absence au bulletin")}
           </.link>
+          <.link
+            :if={@can_edit? and @period}
+            id="absence-totals-link"
+            navigate={~p"/school/absence-totals?#{[class: @cg.id, period: @period_param]}"}
+            class="btn btn-ghost btn-sm"
+          >
+            <.icon name="hero-chart-bar" class="size-4" />
+            {gettext("Bilan des absences")}
+          </.link>
           <form :if={@sequences != []} id="discipline-period-form" phx-change="select_period">
             <.input
               type="select"
