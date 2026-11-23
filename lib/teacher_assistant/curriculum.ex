@@ -881,6 +881,31 @@ defmodule TeacherAssistant.Curriculum do
   end
 
   @doc """
+  The course a teaching context belongs to, as its teacher sees it: `{label, contexts}`
+  — a combined course's label and every member context, or « Matière · Classe » and the
+  context alone. Each context has its `class_group` loaded; members come in class order
+  and a member with no class yet is skipped.
+  """
+  def course_of_context(%Scope{} = scope, %TeachingContext{combined_course_id: nil} = ctx) do
+    ctx = Ash.load!(ctx, :class_group, scope: scope)
+    {"#{ctx.subject} · #{ctx.class_group.label}", [ctx]}
+  end
+
+  def course_of_context(%Scope{} = scope, %TeachingContext{combined_course_id: id}) do
+    {:ok, course} = get_course(scope, id)
+
+    contexts =
+      id
+      |> contexts_of_course!(scope: scope)
+      # `:class_group` is multitenant: the load needs the scope.
+      |> Ash.load!(:class_group, scope: scope)
+      |> Enum.reject(&is_nil(&1.class_group))
+      |> Enum.sort_by(&SchoolTemplates.class_sort_key(&1.class_group))
+
+    {course.label, contexts}
+  end
+
+  @doc """
   The union roster of a `CombinedCourse`: every student of every member class,
   grouped by class (each group carries its own `class_group` and
   `teaching_context`, so a mark can always be routed back to the right context).

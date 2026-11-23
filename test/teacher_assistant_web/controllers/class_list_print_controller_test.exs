@@ -164,6 +164,35 @@ defmodule TeacherAssistantWeb.ClassListPrintControllerTest do
       assert body =~ "Awa Ngono"
     end
 
+    test "a combined course prints one page per member class", %{
+      conn: conn,
+      scope: scope,
+      year: year
+    } do
+      [ctx_a, ctx_b] =
+        for _ <- 1..2 do
+          TeacherFixtures.assigned_context_fixture(scope, year, %{
+            subject: "Anglais",
+            level: "6ème",
+            teacher: scope.current_user
+          })
+        end
+
+      {:ok, cg_a} = Enrollment.fetch_owned_class_group(scope, ctx_a.class_group_id)
+      {:ok, cg_b} = Enrollment.fetch_owned_class_group(scope, ctx_b.class_group_id)
+      {:ok, _} = Enrollment.add_student(scope, cg_a, %{full_name: "Awa Option", sex: :f})
+      {:ok, _} = Enrollment.add_student(scope, cg_b, %{full_name: "Ben Option", sex: :m})
+      {:ok, _course} = TeacherAssistant.Curriculum.combine_course(scope, [ctx_a, ctx_b])
+
+      body = conn |> get(~p"/teacher/contexts/#{ctx_b.id}/class-list/print") |> html_response(200)
+
+      assert length(Regex.scan(~r/<section class="sheet/, body)) == 2
+      assert body =~ cg_a.label
+      assert body =~ cg_b.label
+      assert body =~ "Awa Option"
+      assert body =~ "Ben Option"
+    end
+
     test "a teacher can't print another teacher's course", %{
       scope: scope,
       workspace: workspace,

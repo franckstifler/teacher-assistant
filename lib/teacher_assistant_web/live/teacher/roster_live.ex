@@ -13,22 +13,33 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
 
     with true <- not is_nil(ws),
          {:ok, ctx} <- Curriculum.fetch_assigned_teaching_context(scope, ctx_id),
-         {:ok, class_group} <- Enrollment.fetch_owned_class_group(scope, ctx.class_group_id) do
-      {:ok, load(socket, scope, ws, ctx, class_group)}
+         {:ok, _class_group} <- Enrollment.fetch_owned_class_group(scope, ctx.class_group_id) do
+      {:ok, load(socket, scope, ws, ctx)}
     else
       _ -> {:ok, push_navigate(socket, to: ~p"/school")}
     end
   end
 
-  defp load(socket, scope, ws, ctx, class_group) do
-    students = Enrollment.list_students(scope, class_group)
+  # A combined course lists every member class (as « Notes » and « Résultats » do),
+  # each under its class's name.
+  defp load(socket, scope, ws, ctx) do
+    {title, contexts} = Curriculum.course_of_context(scope, ctx)
+
+    groups =
+      for c <- contexts,
+          do: %{
+            class_group: c.class_group,
+            students: Enrollment.list_students(scope, c.class_group)
+          }
 
     socket
-    |> assign(:page_title, "#{ctx.subject} · #{class_group.label} · #{gettext("Élèves")}")
+    |> assign(:page_title, "#{title} · #{gettext("Élèves")}")
     |> assign(:ws, ws)
     |> assign(:ctx, ctx)
-    |> assign(:class_group, class_group)
-    |> assign(:students, students)
+    |> assign(:title, title)
+    |> assign(:groups, groups)
+    |> assign(:combined?, length(groups) > 1)
+    |> assign(:students, Enum.flat_map(groups, & &1.students))
   end
 
   defp sex_counts(students) do
@@ -46,12 +57,12 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
       <section id="teacher-roster" class="mx-auto max-w-2xl space-y-5">
         <.teaching_nav
           context_id={@ctx.id}
-          label={"#{@ctx.subject} · #{@class_group.label}"}
+          label={@title}
           current={:roster}
         />
         <.page_header
           eyebrow={gettext("Roster")}
-          title={"#{@ctx.subject} · #{@class_group.label}"}
+          title={@title}
         />
 
         <div class="flex justify-end">
@@ -74,21 +85,37 @@ defmodule TeacherAssistantWeb.Teacher.RosterLive do
           <span class="ta-num">{Map.get(sex_counts(@students), :m, 0)} {gettext("Garçons")}</span>
         </div>
 
-        <div :if={@students != []} id="student-table" class="ta-section">
-          <.list_row
-            :for={s <- @students}
-            id={"student-row-#{s.id}"}
-            title={s.full_name}
-            meta={
-              [if(s.sex == :f, do: gettext("Fille"), else: gettext("Garçon")), s.matricule]
-              |> Enum.reject(&is_nil/1)
-              |> Enum.join(" · ")
-            }
+        <div :if={@students != []} id="student-table" class="space-y-5">
+          <section
+            :for={g <- @groups}
+            :if={g.students != []}
+            id={"roster-class-#{g.class_group.id}"}
+            class="space-y-2"
           >
-            <:leading>
-              <.student_avatar student={s} class="size-9 text-xs" />
-            </:leading>
-          </.list_row>
+            <h2 :if={@combined?} class="ta-eyebrow">
+              {g.class_group.label} · {ngettext(
+                "%{count} élève",
+                "%{count} élèves",
+                length(g.students)
+              )}
+            </h2>
+            <div class="ta-section">
+              <.list_row
+                :for={s <- g.students}
+                id={"student-row-#{s.id}"}
+                title={s.full_name}
+                meta={
+                  [if(s.sex == :f, do: gettext("Fille"), else: gettext("Garçon")), s.matricule]
+                  |> Enum.reject(&is_nil/1)
+                  |> Enum.join(" · ")
+                }
+              >
+                <:leading>
+                  <.student_avatar student={s} class="size-9 text-xs" />
+                </:leading>
+              </.list_row>
+            </div>
+          </section>
         </div>
 
         <.empty_state

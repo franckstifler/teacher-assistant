@@ -52,8 +52,11 @@ defmodule TeacherAssistantWeb.ClassListPrintController do
   def teacher(conn, %{"id" => ctx_id}) do
     with %{current_workspace: %{}} = scope <- conn.assigns.current_scope,
          {:ok, ctx} <- Curriculum.fetch_assigned_teaching_context(scope, ctx_id),
-         {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, ctx.class_group_id) do
-      render_working(conn, scope, [sheet(scope, cg, ctx.subject)], list_title(cg))
+         {:ok, _cg} <- Enrollment.fetch_owned_class_group(scope, ctx.class_group_id) do
+      # A combined course prints one page per member class, like « Mes listes ».
+      {title, contexts} = Curriculum.course_of_context(scope, ctx)
+      sheets = Enum.map(contexts, &sheet(scope, &1.class_group, &1.subject))
+      render_working(conn, scope, sheets, gettext("Liste de classe") <> " — " <> title)
     else
       _ -> redirect(conn, to: ~p"/school")
     end

@@ -177,7 +177,7 @@ msgstr ""
 msgid "Passable"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/roster_live.ex:53
+#: lib/teacher_assistant_web/live/teacher/roster_live.ex:64
 #, elixir-autogen, elixir-format
 msgid "Roster"
 msgstr ""
@@ -269,7 +269,7 @@ msgstr ""
 msgid "Classes"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/roster_live.ex:83
+#: lib/teacher_assistant_web/live/teacher/roster_live.ex:108
 #, elixir-autogen, elixir-format
 msgid "Fille"
 msgstr ""
@@ -277,13 +277,13 @@ msgstr ""
 #: lib/teacher_assistant_web/controllers/class_list_print_html/roster.html.heex:86
 #: lib/teacher_assistant_web/live/school/class_live.ex:544
 #: lib/teacher_assistant_web/live/school/results_live.ex:198
-#: lib/teacher_assistant_web/live/teacher/roster_live.ex:72
+#: lib/teacher_assistant_web/live/teacher/roster_live.ex:83
 #: lib/teacher_assistant_web/live/teacher/statistics_live.ex:244
 #, elixir-autogen, elixir-format
 msgid "Filles"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/roster_live.ex:83
+#: lib/teacher_assistant_web/live/teacher/roster_live.ex:108
 #, elixir-autogen, elixir-format
 msgid "Garçon"
 msgstr ""
@@ -291,7 +291,7 @@ msgstr ""
 #: lib/teacher_assistant_web/controllers/class_list_print_html/roster.html.heex:85
 #: lib/teacher_assistant_web/live/school/class_live.ex:545
 #: lib/teacher_assistant_web/live/school/results_live.ex:202
-#: lib/teacher_assistant_web/live/teacher/roster_live.ex:74
+#: lib/teacher_assistant_web/live/teacher/roster_live.ex:85
 #: lib/teacher_assistant_web/live/teacher/statistics_live.ex:243
 #, elixir-autogen, elixir-format
 msgid "Garçons"
@@ -346,7 +346,7 @@ msgstr ""
 msgid "Sexe"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/roster_live.ex:70
+#: lib/teacher_assistant_web/live/teacher/roster_live.ex:81
 #, elixir-autogen, elixir-format
 msgid "students"
 msgstr ""
@@ -2710,7 +2710,7 @@ msgstr ""
 #: lib/teacher_assistant_web/live/school/students_live.ex:33
 #: lib/teacher_assistant_web/live/school/students_live.ex:39
 #: lib/teacher_assistant_web/live/school/students_live.ex:189
-#: lib/teacher_assistant_web/live/teacher/roster_live.ex:27
+#: lib/teacher_assistant_web/live/teacher/roster_live.ex:36
 #: lib/teacher_assistant_web/spaces.ex:513
 #, elixir-autogen, elixir-format
 msgid "Élèves"
@@ -2765,7 +2765,7 @@ msgstr ""
 msgid "Leçon"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/roster_live.ex:97
+#: lib/teacher_assistant_web/live/teacher/roster_live.ex:124
 #, elixir-autogen, elixir-format
 msgid "No students yet."
 msgstr ""
@@ -5170,6 +5170,7 @@ msgstr ""
 #: lib/teacher_assistant_web/live/teacher/marks_live.ex:1874
 #: lib/teacher_assistant_web/live/teacher/marks_live.ex:1880
 #: lib/teacher_assistant_web/live/teacher/marks_summary_live.ex:239
+#: lib/teacher_assistant_web/live/teacher/roster_live.ex:96
 #, elixir-autogen, elixir-format
 msgid "%{count} élève"
 msgid_plural "%{count} élèves"
@@ -11975,7 +11976,8 @@ msgstr ""
 msgid "LISTE DE CLASSE"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/class_list_print_controller.ex:110
+#: lib/teacher_assistant_web/controllers/class_list_print_controller.ex:59
+#: lib/teacher_assistant_web/controllers/class_list_print_controller.ex:113
 #: lib/teacher_assistant_web/controllers/class_list_print_html/roster.html.heex:6
 #, elixir-autogen, elixir-format
 msgid "Liste de classe"
@@ -11998,7 +12000,7 @@ msgstr ""
 msgid "S"
 msgstr ""
 
-#: lib/teacher_assistant_web/live/teacher/roster_live.ex:64
+#: lib/teacher_assistant_web/live/teacher/roster_live.ex:75
 #, elixir-autogen, elixir-format
 msgid "Imprimer la liste"
 msgstr ""
@@ -15603,7 +15605,7 @@ msgstr ""
 msgid "Supprimer l'élève"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/class_list_print_controller.ex:75
+#: lib/teacher_assistant_web/controllers/class_list_print_controller.ex:78
 #, elixir-autogen, elixir-format
 msgid "Aucun cours attribué : pas de liste à imprimer."
 msgstr ""
@@ -15613,7 +15615,7 @@ msgstr ""
 msgid "Imprimer mes listes de classe"
 msgstr ""
 
-#: lib/teacher_assistant_web/controllers/class_list_print_controller.ex:71
+#: lib/teacher_assistant_web/controllers/class_list_print_controller.ex:74
 #, elixir-autogen, elixir-format
 msgid "Mes listes de classe"
 msgstr ""

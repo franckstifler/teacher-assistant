@@ -46,6 +46,40 @@ defmodule TeacherAssistantWeb.Teacher.RosterLiveTest do
       assert has_element?(view, "#student-table")
     end
 
+    test "a combined course lists every member class, under each class's name", %{
+      conn: conn,
+      ctx: ctx,
+      cg: cg,
+      s1: s1,
+      year: year,
+      actor: head,
+      scope: scope
+    } do
+      ctx_b =
+        TeacherFixtures.assigned_context_fixture(scope, year, %{
+          subject: "Maths",
+          level: "3ème",
+          teacher: head
+        })
+
+      {:ok, cg_b} = Enrollment.fetch_owned_class_group(scope, ctx_b.class_group_id)
+      {:ok, s3} = Enrollment.add_student(scope, cg_b, %{full_name: "Chloé", sex: :f})
+      {:ok, course} = TeacherAssistant.Curriculum.combine_course(scope, [ctx, ctx_b])
+
+      # Opened from either member class, the tab shows the whole course.
+      for id <- [ctx.id, ctx_b.id] do
+        {:ok, view, _html} = live(conn, ~p"/teacher/contexts/#{id}/roster")
+
+        assert page_title(view) =~ course.label
+        assert has_element?(view, "#roster-class-#{cg.id}", cg.label)
+        assert has_element?(view, "#roster-class-#{cg_b.id}", cg_b.label)
+        assert has_element?(view, "#roster-class-#{cg.id} #student-row-#{s1.id}")
+        assert has_element?(view, "#roster-class-#{cg_b.id} #student-row-#{s3.id}")
+        assert has_element?(view, "#roster-count", "3")
+        assert has_element?(view, "#roster-count", "2 Filles")
+      end
+    end
+
     test "empty roster shows a strong empty state", %{
       conn: conn,
       year: year,
