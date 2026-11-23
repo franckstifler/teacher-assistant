@@ -34,6 +34,8 @@
       .totals { display: flex; justify-content: center; gap: 6mm; flex-wrap: wrap; margin: 2mm 0 1mm; }
       .totals strong { font-size: 1.1em; }
       table { width: 100%; border-collapse: collapse; }
+      #absence-print table { table-layout: fixed; }
+      #absence-print th.text { width: 52%; }
       thead { display: table-header-group; }
       th, td { border: 0.2mm solid #555; padding: 0.9mm 1.5mm; text-align: right; vertical-align: top; }
       th { background: #eee; font-size: 0.9em; text-align: center; }
@@ -47,7 +49,7 @@
       .sign .space { height: 18mm; }
     </style>
   </head>
-  <body>
+  <body id="absence-print">
     <div class="print-actions">
       <button type="button" data-print>{gettext("Imprimer")}</button>
     </div>

@@ -148,11 +148,14 @@ defmodule TeacherAssistantWeb.School.AbsenceTotalsLive do
           data-flagged={AbsenceTotals.flagged?(row, @threshold)}
           class="flex items-center gap-3 px-4 py-2 transition-colors hover:bg-base-200/50"
         >
-          <.icon
-            :if={AbsenceTotals.flagged?(row, @threshold)}
-            name="hero-exclamation-triangle"
-            class="size-4 shrink-0 text-warning"
-          />
+          <%!-- the icon's room is kept on every row, so names line up --%>
+          <span class="size-4 shrink-0">
+            <.icon
+              :if={AbsenceTotals.flagged?(row, @threshold)}
+              name="hero-exclamation-triangle"
+              class="size-4 text-warning"
+            />
+          </span>
           <p class="min-w-0 flex-1 truncate text-sm">{row.student.full_name}</p>
           <p class="flex shrink-0 flex-wrap justify-end gap-x-3 text-sm tabular-nums">
             <span
