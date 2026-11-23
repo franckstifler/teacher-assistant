@@ -748,6 +748,38 @@ defmodule TeacherAssistant.Attendance do
     end
   end
 
+  @doc """
+  Spec 2026-11-23 « Bilan des absences »: for each of `class_groups` (in that order),
+  `%{class_group, source, rows}` — `source` `:roll_call` or `:typed` as the bulletin
+  reads it, `rows` the class on the period's first day in roll order, each
+  `%{enrollment, student, unjustified_hours, justified_hours, retards, recorded?}` with
+  the figures of `bulletin_conduct/4`.
+  """
+  def absence_totals(%Scope{} = scope, period, class_groups) do
+    first_day = Organization.period_first_day(scope, period)
+
+    for cg <- class_groups do
+      totals = bulletin_conduct(scope, cg, period)
+
+      rows =
+        for %{student: student, enrollment: enrollment} <-
+              TeacherAssistant.Enrollment.list_roster(scope, cg, on: first_day),
+            %{} = t <- [totals[enrollment.id]] do
+          t
+          |> Map.take([:unjustified_hours, :justified_hours, :retards, :recorded?])
+          |> Map.merge(%{enrollment: enrollment, student: student})
+        end
+
+      source =
+        case Map.values(totals) do
+          [%{source: source} | _] -> source
+          [] -> :roll_call
+        end
+
+      %{class_group: cg, source: source, rows: rows}
+    end
+  end
+
   @doc "Spec 2026-10-30 §6: roster students of a typed class still missing a figure for `period`."
   def typed_absences_missing(%Scope{} = scope, %ClassGroup{} = class_group, period) do
     case effective_absence_source(scope, class_group) do
