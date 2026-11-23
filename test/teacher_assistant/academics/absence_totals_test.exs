@@ -83,7 +83,19 @@ defmodule TeacherAssistant.Academics.AbsenceTotalsTest do
     assert AbsenceTotals.parse_threshold("8", d) == Decimal.new(8)
     assert AbsenceTotals.parse_threshold(" 7.5 ", d) == Decimal.new("7.5")
 
-    for bad <- [nil, "", "abc", "-3", "0", "12abc"],
+    for bad <- [
+          nil,
+          "",
+          "abc",
+          "-3",
+          "0",
+          "12abc",
+          "inf",
+          "Infinity",
+          "NaN",
+          "1e100000000",
+          "1001"
+        ],
         do: assert(AbsenceTotals.parse_threshold(bad, d) == d)
   end
 

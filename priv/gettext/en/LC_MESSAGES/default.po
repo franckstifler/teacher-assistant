@@ -204,8 +204,8 @@ msgstr "Very good"
 
 #: lib/teacher_assistant/report_cards.ex:427
 #: lib/teacher_assistant_web/controllers/statistics_print_html.ex:10
-#: lib/teacher_assistant_web/live/school/absence_totals_params.ex:87
-#: lib/teacher_assistant_web/live/school/absence_totals_params.ex:93
+#: lib/teacher_assistant_web/live/school/absence_totals_params.ex:99
+#: lib/teacher_assistant_web/live/school/absence_totals_params.ex:105
 #: lib/teacher_assistant_web/live/school/bulletin_live.ex:153
 #: lib/teacher_assistant_web/live/school/council_live.ex:250
 #: lib/teacher_assistant_web/live/school/council_live.ex:414
@@ -234,7 +234,7 @@ msgstr "Year"
 #: lib/teacher_assistant_web/controllers/receipt_verify_html/show.html.heex:77
 #: lib/teacher_assistant_web/controllers/timetable_print_html/general.html.heex:46
 #: lib/teacher_assistant_web/controllers/timetable_print_html/show.html.heex:60
-#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:90
+#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:104
 #: lib/teacher_assistant_web/live/school/absences_live.ex:237
 #: lib/teacher_assistant_web/live/school/assignments_live.ex:213
 #: lib/teacher_assistant_web/live/school/bulletins_live.ex:753
@@ -354,7 +354,7 @@ msgstr "Sex"
 msgid "students"
 msgstr "students"
 
-#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:77
+#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:79
 #: lib/teacher_assistant_web/controllers/bulletin_verify_html/show.html.heex:22
 #: lib/teacher_assistant_web/controllers/bulletin_verify_html/show.html.heex:33
 #: lib/teacher_assistant_web/controllers/card_verify_html/show.html.heex:23
@@ -404,7 +404,7 @@ msgstr "Discipline"
 msgid "Effectif"
 msgstr "Class size"
 
-#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:58
+#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:60
 #: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:94
 #: lib/teacher_assistant_web/controllers/bulletin_verify_html.ex:8
 #: lib/teacher_assistant_web/controllers/card_verify_html/show.html.heex:25
@@ -1022,7 +1022,7 @@ msgid "Aucune donnée"
 msgstr "No data"
 
 #: lib/teacher_assistant_web/live/school/absence_hours_live.ex:242
-#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:69
+#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:83
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:240
 #: lib/teacher_assistant_web/live/school/results_live.ex:145
 #, elixir-autogen, elixir-format
@@ -1079,14 +1079,14 @@ msgid "Félicitations"
 msgstr "Congratulations"
 
 #: lib/teacher_assistant_web/components/print_components.ex:51
-#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:52
+#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:54
 #: lib/teacher_assistant_web/controllers/card_print_html/show.html.heex:85
 #: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:52
 #: lib/teacher_assistant_web/controllers/fee_paper_print_html/control.html.heex:55
 #: lib/teacher_assistant_web/controllers/fee_paper_print_html/warnings.html.heex:41
 #: lib/teacher_assistant_web/controllers/mark_sheet_print_html/show.html.heex:42
 #: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:46
-#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:63
+#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:77
 #: lib/teacher_assistant_web/live/school/bulletin_live.ex:130
 #: lib/teacher_assistant_web/live/school/class_overview_live.ex:287
 #: lib/teacher_assistant_web/live/school/fee_control_live.ex:127
@@ -1231,7 +1231,7 @@ msgstr "Term avg."
 #: lib/teacher_assistant_web/controllers/mark_sheet_print_html/show.html.heex:44
 #: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:49
 #: lib/teacher_assistant_web/controllers/timetable_print_html/show.html.heex:74
-#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:82
+#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:96
 #: lib/teacher_assistant_web/live/school/absences_live.ex:248
 #: lib/teacher_assistant_web/live/school/bulletins_live.ex:612
 #: lib/teacher_assistant_web/live/school/my_timetable_live.ex:248
@@ -1531,7 +1531,7 @@ msgstr "Unjustified"
 msgid "Justifier"
 msgstr "Justify"
 
-#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:79
+#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:81
 #: lib/teacher_assistant_web/live/school/absences_live.ex:154
 #: lib/teacher_assistant_web/live/school/register_live.ex:414
 #, elixir-autogen, elixir-format
@@ -1567,7 +1567,7 @@ msgstr "R"
 msgid "Retard"
 msgstr "Late"
 
-#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:80
+#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:82
 #: lib/teacher_assistant_web/controllers/bulletin_print_html/show.html.heex:310
 #: lib/teacher_assistant_web/live/school/day_live.ex:195
 #: lib/teacher_assistant_web/live/school/register_live.ex:416
@@ -2601,8 +2601,8 @@ msgstr "Summary"
 #: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:67
 #: lib/teacher_assistant_web/controllers/mark_sheet_print_html.ex:16
 #: lib/teacher_assistant_web/controllers/statistics_print_html.ex:8
-#: lib/teacher_assistant_web/live/school/absence_totals_params.ex:85
-#: lib/teacher_assistant_web/live/school/absence_totals_params.ex:91
+#: lib/teacher_assistant_web/live/school/absence_totals_params.ex:97
+#: lib/teacher_assistant_web/live/school/absence_totals_params.ex:103
 #: lib/teacher_assistant_web/live/school/absences_live.ex:161
 #: lib/teacher_assistant_web/live/school/absences_live.ex:193
 #: lib/teacher_assistant_web/live/school/conduct_live.ex:238
@@ -2638,8 +2638,8 @@ msgstr "Town / borough"
 #: lib/teacher_assistant_web/controllers/bulletin_verify_html.ex:9
 #: lib/teacher_assistant_web/controllers/council_print_controller.ex:81
 #: lib/teacher_assistant_web/controllers/statistics_print_html.ex:9
-#: lib/teacher_assistant_web/live/school/absence_totals_params.ex:86
-#: lib/teacher_assistant_web/live/school/absence_totals_params.ex:92
+#: lib/teacher_assistant_web/live/school/absence_totals_params.ex:98
+#: lib/teacher_assistant_web/live/school/absence_totals_params.ex:104
 #: lib/teacher_assistant_web/live/school/council_live.ex:251
 #: lib/teacher_assistant_web/live/school/council_live.ex:407
 #: lib/teacher_assistant_web/live/school/councils_live.ex:172
@@ -3256,7 +3256,7 @@ msgstr "Principal"
 msgid "Suivi pédagogique"
 msgstr "Academic follow-up"
 
-#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:52
+#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:66
 #: lib/teacher_assistant_web/live/school/absences_live.ex:189
 #: lib/teacher_assistant_web/live/school/conduct_live.ex:235
 #: lib/teacher_assistant_web/live/school/sanctions_live.ex:286
@@ -4042,7 +4042,7 @@ msgid_plural "%{count} présents"
 msgstr[0] "%{count} present"
 msgstr[1] "%{count} present"
 
-#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:177
+#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:190
 #: lib/teacher_assistant_web/live/school/conduct_live.ex:185
 #: lib/teacher_assistant_web/live/school/conduct_live.ex:197
 #: lib/teacher_assistant_web/live/school/register_live.ex:225
@@ -5348,8 +5348,8 @@ msgstr "Second phone"
 msgid "Séq. %{n}"
 msgstr "Seq. %{n}"
 
-#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:60
-#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:93
+#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:62
+#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:107
 #: lib/teacher_assistant_web/live/school/absences_live.ex:240
 #: lib/teacher_assistant_web/live/school/bulletins_live.ex:876
 #: lib/teacher_assistant_web/live/school/sanctions_live.ex:328
@@ -15666,7 +15666,7 @@ msgstr "No student to show."
 msgid "Imprimer le relevé"
 msgstr "Print the record of marks"
 
-#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:101
+#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:103
 #: lib/teacher_assistant_web/controllers/entry_report_print_html/show.html.heex:144
 #: lib/teacher_assistant_web/controllers/mark_sheet_print_html/show.html.heex:112
 #: lib/teacher_assistant_web/controllers/statistics_print_html/show.html.heex:110
@@ -16812,16 +16812,16 @@ msgstr "Left on %{date}"
 msgid "Pas encore inscrit·e"
 msgstr "Not yet in the class"
 
-#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:66
-#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:113
+#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:68
+#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:127
 #, elixir-autogen, elixir-format
 msgid "Aucun élève au-dessus du seuil"
 msgstr "No student over the threshold"
 
 #: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:7
-#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:57
+#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:59
 #: lib/teacher_assistant_web/live/school/absence_totals_live.ex:19
-#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:53
+#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:67
 #: lib/teacher_assistant_web/live/school/discipline_live.ex:218
 #: lib/teacher_assistant_web/spaces.ex:479
 #, elixir-autogen, elixir-format
@@ -16829,60 +16829,60 @@ msgid "Bilan des absences"
 msgstr "Absence totals"
 
 #: lib/teacher_assistant_web/controllers/absence_totals_print_html.ex:14
-#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:186
+#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:200
 #, elixir-autogen, elixir-format
 msgid "Heures de l'appel"
 msgstr "Hours from the roll call"
 
 #: lib/teacher_assistant_web/controllers/absence_totals_print_html.ex:15
-#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:187
+#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:201
 #, elixir-autogen, elixir-format
 msgid "Heures saisies à la main"
 msgstr "Hours typed by hand"
 
-#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:174
+#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:187
 #, elixir-autogen, elixir-format
 msgid "J"
 msgstr "J"
 
-#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:103
+#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:105
 #, elixir-autogen, elixir-format
 msgid "Le Surveillant général"
 msgstr "The Head of discipline"
 
-#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:171
+#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:184
 #, elixir-autogen, elixir-format
 msgid "NJ"
 msgstr "U"
 
-#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:78
+#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:80
 #, elixir-autogen, elixir-format
 msgid "Non justifiées"
 msgstr "Unjustified"
 
-#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:102
+#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:116
 #, elixir-autogen, elixir-format
 msgid "Seuil (h)"
 msgstr "Threshold (h)"
 
-#: lib/teacher_assistant_web/live/school/absence_totals_params.ex:105
+#: lib/teacher_assistant_web/live/school/absence_totals_params.ex:117
 #, elixir-autogen, elixir-format
 msgid "Seuil : %{hours}"
 msgstr "Threshold: %{hours}"
 
-#: lib/teacher_assistant_web/live/school/absence_totals_params.ex:101
+#: lib/teacher_assistant_web/live/school/absence_totals_params.ex:113
 #, elixir-autogen, elixir-format
 msgid "Seuil : %{hours} — 20 h × %{count} séquences"
 msgstr "Threshold: %{hours} — 20 h × %{count} sequences"
 
-#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:62
-#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:109
+#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:64
+#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:123
 #, elixir-autogen, elixir-format
 msgid "heures non justifiées"
 msgstr "unjustified hours"
 
-#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:90
-#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:162
+#: lib/teacher_assistant_web/controllers/absence_totals_print_html/show.html.heex:92
+#: lib/teacher_assistant_web/live/school/absence_totals_live.ex:175
 #, elixir-autogen, elixir-format
 msgid "non saisi"
 msgstr "not entered"

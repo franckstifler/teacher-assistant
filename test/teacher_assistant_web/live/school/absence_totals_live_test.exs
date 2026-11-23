@@ -41,14 +41,14 @@ defmodule TeacherAssistantWeb.School.AbsenceTotalsLiveTest do
 
     assert has_element?(view, "#absence-row-#{ctx.awa.id}", "Awa Ngo")
     assert has_element?(view, "#absence-row-#{ctx.bob.id}", "Bob Eto")
-    assert has_element?(view, "#absence-source", "appel")
+    assert has_element?(view, "#absence-source-#{ctx.cg.id}", "appel")
   end
 
   test "a typed class names its source, marks a flagged student and an unrecorded one", ctx do
     typed_awa(ctx)
     {:ok, view, _} = live(ctx.conn, path(class: ctx.cg.id, period: "seq:#{ctx.s1.id}"))
 
-    assert has_element?(view, "#absence-source", "saisi")
+    assert has_element?(view, "#absence-source-#{ctx.cg.id}", "saisi")
     assert has_element?(view, "#absence-row-#{ctx.awa.id}[data-flagged]")
     refute has_element?(view, "#absence-row-#{ctx.bob.id}[data-flagged]")
     assert has_element?(view, "#absence-row-#{ctx.bob.id}", "non saisi")
@@ -60,6 +60,8 @@ defmodule TeacherAssistantWeb.School.AbsenceTotalsLiveTest do
 
     assert has_element?(view, "#absence-class-#{ctx.cg.id} #absence-row-#{ctx.awa.id}")
     refute has_element?(view, "#absence-row-#{ctx.bob.id}")
+    # Every class names its source, here too.
+    assert has_element?(view, "#absence-source-#{ctx.cg.id}", "saisi")
 
     {:ok, view, _} = live(ctx.conn, path(period: "seq:#{ctx.s1.id}", seuil: "30"))
     assert has_element?(view, "#absence-empty", "Aucun élève au-dessus du seuil")
@@ -81,6 +83,47 @@ defmodule TeacherAssistantWeb.School.AbsenceTotalsLiveTest do
     |> render_change()
 
     assert_patch(view, path(period: "annee", class: ctx.cg.id, seuil: "5"))
+  end
+
+  test "a new period starts from its own default threshold", ctx do
+    {:ok, view, _} = live(ctx.conn, path(period: "seq:#{ctx.s1.id}"))
+
+    # The form sends the threshold shown (the séquence's 20 h) with the new period.
+    view
+    |> form("#absence-totals-form", %{period: "trim:#{ctx.t1.id}", class: "", seuil: "20"})
+    |> render_change()
+
+    assert_patch(view, path(period: "trim:#{ctx.t1.id}"))
+    expected = Integer.to_string(20 * length(ctx.t1.sequences))
+    assert has_element?(view, "#absence-threshold[value='#{expected}']")
+  end
+
+  test "a typed threshold is kept when the period changes", ctx do
+    {:ok, view, _} = live(ctx.conn, path(period: "seq:#{ctx.s1.id}", seuil: "5"))
+
+    view
+    |> form("#absence-totals-form", %{period: "annee", class: "", seuil: "5"})
+    |> render_change()
+
+    assert_patch(view, path(period: "annee", seuil: "5"))
+  end
+
+  test "a threshold change re-filters without changing the figures", ctx do
+    typed_awa(ctx)
+    {:ok, view, _} = live(ctx.conn, path(period: "seq:#{ctx.s1.id}"))
+    assert has_element?(view, "#absence-row-#{ctx.awa.id}")
+
+    view
+    |> form("#absence-totals-form", %{period: "seq:#{ctx.s1.id}", class: "", seuil: "30"})
+    |> render_change()
+
+    refute has_element?(view, "#absence-row-#{ctx.awa.id}")
+    assert has_element?(view, "#absence-empty")
+  end
+
+  test "a non-finite threshold falls back to the default", ctx do
+    {:ok, view, _} = live(ctx.conn, path(period: "seq:#{ctx.s1.id}", seuil: "inf"))
+    assert has_element?(view, "#absence-threshold[value='20']")
   end
 
   test "a foreign class id falls back to all classes", ctx do

@@ -25,22 +25,36 @@ defmodule TeacherAssistantWeb.School.AbsenceTotalsLive do
 
   def handle_params(params, _uri, socket) do
     view =
-      case Params.resolve(socket.assigns.current_scope, params) do
-        {:ok, view} -> view
-        :no_sequences -> nil
+      with %{} = view <- socket.assigns.view,
+           true <- Params.same_figures?(view, params) do
+        # Only the threshold changed: filter what is already read.
+        Params.refilter(view, params)
+      else
+        _ ->
+          case Params.resolve(socket.assigns.current_scope, params) do
+            {:ok, view} -> view
+            :no_sequences -> nil
+          end
       end
 
     {:noreply, assign(socket, view: view)}
   end
 
   def handle_event("pick", params, socket) do
-    query =
-      Params.query(socket.assigns.view,
-        period: params["period"],
-        class: params["class"],
-        seuil: params["seuil"]
-      )
+    view = socket.assigns.view
 
+    # The form always sends the threshold shown: the old period's default, unless it
+    # was typed. A new period then starts from its own default.
+    seuil =
+      case AbsenceTotals.parse_threshold(params["seuil"], nil) do
+        %Decimal{} = typed ->
+          if Decimal.equal?(typed, view.default_threshold), do: nil, else: params["seuil"]
+
+        nil ->
+          nil
+      end
+
+    query = Params.query(view, period: params["period"], class: params["class"], seuil: seuil)
     {:noreply, push_patch(socket, to: ~p"/school/absence-totals?#{query}")}
   end
 
@@ -117,7 +131,6 @@ defmodule TeacherAssistantWeb.School.AbsenceTotalsLive do
           :for={group <- (@view && @view.groups) || []}
           group={group}
           threshold={@view.threshold}
-          one_class?={@view.class_group != nil}
         />
       </section>
     </Layouts.app>
@@ -126,18 +139,13 @@ defmodule TeacherAssistantWeb.School.AbsenceTotalsLive do
 
   attr :group, :map, required: true
   attr :threshold, :any, required: true
-  attr :one_class?, :boolean, required: true
 
   defp totals_group(assigns) do
     ~H"""
     <section id={"absence-class-#{@group.class_group.id}"} class="space-y-2">
       <div class="flex flex-wrap items-baseline justify-between gap-2">
         <h2 class="ta-eyebrow">{@group.class_group.label}</h2>
-        <span
-          :if={@one_class?}
-          id="absence-source"
-          class="badge badge-ghost badge-sm"
-        >
+        <span id={"absence-source-#{@group.class_group.id}"} class="badge badge-ghost badge-sm">
           {source_label(@group.source)}
         </span>
       </div>
@@ -156,30 +164,33 @@ defmodule TeacherAssistantWeb.School.AbsenceTotalsLive do
               class="size-4 text-warning"
             />
           </span>
-          <p class="min-w-0 flex-1 truncate text-sm">{row.student.full_name}</p>
-          <p class="flex shrink-0 flex-wrap justify-end gap-x-3 text-sm tabular-nums">
-            <span
-              :if={@group.source == :typed and not row.recorded?}
-              class="text-base-content/50"
-            >
-              {gettext("non saisi")}
-            </span>
-            <span
-              :if={@group.source == :roll_call or row.recorded?}
-              class={[
-                "font-semibold",
-                AbsenceTotals.flagged?(row, @threshold) && "text-warning"
-              ]}
-            >
-              {Numbers.hours(row.unjustified_hours)} {gettext("NJ")}
-            </span>
-            <span :if={@group.source == :roll_call} class="text-base-content/70">
-              {Numbers.hours(row.justified_hours)} {gettext("J")}
-            </span>
-            <span :if={@group.source == :roll_call} class="text-base-content/70">
-              {ngettext("%{count} retard", "%{count} retards", row.retards)}
-            </span>
-          </p>
+          <%!-- phones: the figures go under the name, so long names keep the width --%>
+          <div class="min-w-0 flex-1 sm:flex sm:items-center sm:gap-3">
+            <p class="truncate text-sm sm:flex-1">{row.student.full_name}</p>
+            <p class="flex flex-wrap gap-x-3 text-xs tabular-nums sm:shrink-0 sm:justify-end sm:text-sm">
+              <span
+                :if={@group.source == :typed and not row.recorded?}
+                class="text-base-content/50"
+              >
+                {gettext("non saisi")}
+              </span>
+              <span
+                :if={@group.source == :roll_call or row.recorded?}
+                class={[
+                  "font-semibold",
+                  AbsenceTotals.flagged?(row, @threshold) && "text-warning"
+                ]}
+              >
+                {Numbers.hours(row.unjustified_hours)} {gettext("NJ")}
+              </span>
+              <span :if={@group.source == :roll_call} class="text-base-content/70">
+                {Numbers.hours(row.justified_hours)} {gettext("J")}
+              </span>
+              <span :if={@group.source == :roll_call} class="text-base-content/70">
+                {ngettext("%{count} retard", "%{count} retards", row.retards)}
+              </span>
+            </p>
+          </div>
         </li>
       </ul>
     </section>

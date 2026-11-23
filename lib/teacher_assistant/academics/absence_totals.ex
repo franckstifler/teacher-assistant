@@ -15,10 +15,19 @@ defmodule TeacherAssistant.Academics.AbsenceTotals do
   def default_threshold(sequence_count) when is_integer(sequence_count),
     do: Decimal.new(@hours_per_sequence * max(sequence_count, 1))
 
-  @doc "A typed threshold (« 12,5 » or « 12.5 »); anything not a positive number gives `default`."
+  # No school year has this many hours: a bigger figure is a typing slip.
+  @max_hours Decimal.new(1000)
+
+  @doc """
+  A typed threshold (« 12,5 » or « 12.5 »); anything but a finite number above 0 and up
+  to 1000 h gives `default`.
+  """
   def parse_threshold(param, default) when is_binary(param) do
-    case param |> String.trim() |> String.replace(",", ".") |> Decimal.parse() do
-      {hours, ""} -> if Decimal.gt?(hours, 0), do: hours, else: default
+    with {hours, ""} <- param |> String.trim() |> String.replace(",", ".") |> Decimal.parse(),
+         false <- Decimal.inf?(hours) or Decimal.nan?(hours),
+         true <- Decimal.gt?(hours, 0) and not Decimal.gt?(hours, @max_hours) do
+      hours
+    else
       _ -> default
     end
   end

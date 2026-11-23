@@ -10,8 +10,8 @@ defmodule TeacherAssistantWeb.School.AbsenceTotalsParams do
 
   @doc """
   `{:ok, view}` for the scope's current year, or `:no_sequences` before its calendar
-  exists. `view.groups` is already the shown list: one class in full, or every class
-  cut to the students at or over the threshold.
+  exists. `view.all_groups` holds the figures read; `view.groups` is the shown list
+  (see `refilter/2`).
   """
   def resolve(%{current_academic_year: %{} = year} = scope, params) do
     case Organization.list_sequences(scope, year) do
@@ -33,37 +33,49 @@ defmodule TeacherAssistantWeb.School.AbsenceTotalsParams do
 
         class_group = Enum.find(class_groups, &(&1.id == params["class"]))
         count = length(Organization.period_sequences(scope, period))
-        default = AbsenceTotals.default_threshold(count)
-        threshold = AbsenceTotals.parse_threshold(params["seuil"], default)
 
-        groups =
-          case class_group do
-            nil ->
-              scope
-              |> Attendance.absence_totals(period, class_groups)
-              |> AbsenceTotals.over_threshold(threshold)
+        view = %{
+          period: period,
+          period_param: Organization.period_param(period),
+          class_group: class_group,
+          class_groups: class_groups,
+          sequences: sequences,
+          terms: terms,
+          default_threshold: AbsenceTotals.default_threshold(count),
+          sequence_count: count,
+          all_groups:
+            Attendance.absence_totals(scope, period, List.wrap(class_group || class_groups))
+        }
 
-            cg ->
-              Attendance.absence_totals(scope, period, [cg])
-          end
-
-        {:ok,
-         %{
-           period: period,
-           period_param: Organization.period_param(period),
-           class_group: class_group,
-           class_groups: class_groups,
-           sequences: sequences,
-           terms: terms,
-           threshold: threshold,
-           default_threshold: default,
-           sequence_count: count,
-           groups: groups
-         }}
+        {:ok, refilter(view, params)}
     end
   end
 
   def resolve(_scope, _params), do: :no_sequences
+
+  @doc """
+  Whether `params` name the same period and class as `view`: then only the threshold
+  may have changed, and `refilter/2` is enough (no reads).
+  """
+  def same_figures?(view, params),
+    do:
+      params["period"] == view.period_param and
+        (params["class"] || "") == ((view.class_group && view.class_group.id) || "")
+
+  @doc """
+  `view` with the threshold of `params` and the shown groups: one class in full, or
+  every class cut to the students at or over the threshold. No reads.
+  """
+  def refilter(view, params) do
+    threshold = AbsenceTotals.parse_threshold(params["seuil"], view.default_threshold)
+
+    groups =
+      if view.class_group,
+        do: view.all_groups,
+        else: AbsenceTotals.over_threshold(view.all_groups, threshold)
+
+    Map.merge(view, %{threshold: threshold, groups: groups})
+  end
 
   @doc "The URL params of `view` (the threshold only when it is not the default), with `overrides`."
   def query(view, overrides \\ []) do
