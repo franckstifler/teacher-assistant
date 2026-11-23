@@ -13,7 +13,7 @@ the class council.
 ## Decisions
 
 - **Approach (user's choice, 2026-11-23):** one « Bilan des absences » page in the
-  surveillant's « Vie scolaire » menu, right after « Absences », at `/school/absences/totals`.
+  surveillant's « Vie scolaire » menu, right after « Absences », at `/school/absence-totals`.
   Rejected: a new class tab (school-wide spotting would need a second screen) and adding
   totals to the « Discipline » tab (one class only, and a sanctions page grows longer).
 - **Pickers:** a period (séquence, trimester, « Année ») defaulting to the current séquence,
