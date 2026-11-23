@@ -243,6 +243,7 @@ defmodule TeacherAssistantWeb.Spaces do
         section(gettext("Vie scolaire"), [
           school_day(facts[:missed_calls]),
           absences(facts[:unjustified_absences]),
+          absence_totals(),
           conduct(),
           sanctions(facts[:parents_to_notify]),
           classes(),
@@ -469,6 +470,15 @@ defmodule TeacherAssistantWeb.Spaces do
         ~p"/school/day",
         missed,
         :error
+      )
+
+  defp absence_totals,
+    do:
+      item(
+        "absence-totals",
+        gettext("Bilan des absences"),
+        "hero-chart-bar",
+        ~p"/school/absence-totals"
       )
 
   defp absences(unjustified),

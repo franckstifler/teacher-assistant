@@ -43,6 +43,7 @@ defmodule TeacherAssistant.Modules do
     discipline: [
       W.School.DisciplineLive,
       W.School.AbsenceHoursLive,
+      W.School.AbsenceTotalsLive,
       W.School.ConductLive,
       W.School.SanctionsLive,
       W.School.SchoolLifeSettingsLive

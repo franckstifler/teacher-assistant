@@ -191,6 +191,7 @@ defmodule TeacherAssistantWeb.SpacesTest do
              [
                "nav-school-day",
                "nav-school-absences",
+               "nav-school-absence-totals",
                "nav-school-conduct",
                "nav-school-sanctions",
                "nav-school-classes",
