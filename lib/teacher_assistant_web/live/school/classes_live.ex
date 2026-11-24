@@ -36,6 +36,7 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
          page_title: gettext("Classes"),
          profile: profile,
          can_manage_classes?: Enrollment.can_manage_classes?(scope),
+         can_print_lists?: Enrollment.can_manage_register?(scope),
          filters: @filters,
          filter: :all,
          mode: nil,
@@ -94,6 +95,15 @@ defmodule TeacherAssistantWeb.School.ClassesLive do
           subtitle={@year && header_subtitle(@classes)}
         >
           <:actions>
+            <.link
+              :if={@year && @can_print_lists? && @classes != []}
+              id="print-all-class-lists"
+              href={~p"/school/class-lists/print"}
+              target="_blank"
+              class="btn btn-ghost btn-sm gap-1.5"
+            >
+              <.icon name="hero-printer" class="size-4" /> {gettext("Imprimer toutes les listes")}
+            </.link>
             <.link
               :if={@year && @can_manage_classes? && @classes != [] && @mode != :designate}
               id="designate-button"

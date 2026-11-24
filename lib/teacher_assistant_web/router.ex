@@ -116,6 +116,7 @@ defmodule TeacherAssistantWeb.Router do
     get "/school/classes/:id/cards/print", CardPrintController, :show
     get "/school/classes/:id/class-list/print", ClassListPrintController, :roster
     get "/school/classes/:id/class-list/working/print", ClassListPrintController, :working
+    get "/school/class-lists/print", ClassListPrintController, :roster_all
     get "/teacher/contexts/:id/class-list/print", ClassListPrintController, :teacher
     get "/teacher/class-lists/print", ClassListPrintController, :teacher_all
     get "/school/councils/:class_id/print", CouncilPrintController, :show

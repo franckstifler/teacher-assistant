@@ -189,6 +189,22 @@ defmodule TeacherAssistantWeb.School.ClassesLiveTest do
     assert pps[b.id] == head_id
   end
 
+  test "the head prints every class list in one go; a plain teacher sees no button", ctx do
+    {:ok, view, _} = live(ctx.conn, ~p"/school/classes")
+    assert has_element?(view, "#print-all-class-lists[href='/school/class-lists/print']")
+
+    teacher_scope = TeacherAssistant.TeacherFixtures.member_scope_fixture(ctx.scope)
+
+    conn =
+      Phoenix.ConnTest.build_conn()
+      |> Phoenix.ConnTest.init_test_session(%{})
+      |> put_user_in_session(teacher_scope.current_user)
+      |> Plug.Conn.put_session(:workspace_id, ctx.school.id)
+
+    {:ok, view, _} = live(conn, ~p"/school/classes")
+    refute has_element?(view, "#print-all-class-lists")
+  end
+
   test "a plain teacher cannot enter designation mode", ctx do
     %{school: school, scope: scope, year: year} = ctx
     teacher_scope = TeacherAssistant.TeacherFixtures.member_scope_fixture(scope)

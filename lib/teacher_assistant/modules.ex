@@ -87,6 +87,7 @@ defmodule TeacherAssistant.Modules do
     {W.FeePaperPrintController, :control} => :frais,
     {W.CardPrintController, :show} => :photos,
     {W.ClassListPrintController, :roster} => :core,
+    {W.ClassListPrintController, :roster_all} => :core,
     {W.ClassListPrintController, :working} => :core,
     {W.ClassListPrintController, :teacher} => :notes,
     {W.ClassListPrintController, :teacher_all} => :notes,

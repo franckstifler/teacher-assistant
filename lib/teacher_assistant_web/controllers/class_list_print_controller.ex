@@ -17,26 +17,60 @@ defmodule TeacherAssistantWeb.ClassListPrintController do
     with %{current_workspace: %{}} = scope <- conn.assigns.current_scope,
          {:ok, cg} <- Enrollment.fetch_owned_class_group(scope, id),
          true <- ClassShell.allowed?(scope, cg, :register) do
-      template = ReportCards.template(scope, cg)
-      year = Organization.class_year(scope, cg)
-      form_master = Enrollment.form_master(scope, cg)
-
-      conn
-      |> put_layout(false)
-      |> put_root_layout(false)
-      |> render(:roster,
-        cg: cg,
-        year: year && year.name,
-        form_master: form_master && User.display_name(form_master),
-        rows: numbered(Enrollment.list_roster(scope, cg)),
-        template: template,
-        lang: template.language,
-        logo?: template.header.logo?,
-        head_name: ReportCards.head_name(scope)
-      )
+      render_rosters(conn, [roster_sheet(scope, cg)], list_title(cg))
     else
       _ -> redirect(conn, to: ~p"/school")
     end
+  end
+
+  @doc """
+  Every class's official roster of the current year, one A4 page per class in the
+  school's class order — for those who manage every class (head, censeur, surveillant).
+  """
+  def roster_all(conn, _params) do
+    with %{current_workspace: %{}, current_academic_year: %{} = year} = scope <-
+           conn.assigns.current_scope,
+         true <- Enrollment.can_manage_register?(scope),
+         [_ | _] = classes <- Enrollment.list_class_groups(scope, year) do
+      sheets =
+        classes
+        |> Enum.sort_by(&SchoolTemplates.class_sort_key/1)
+        |> Enum.map(&roster_sheet(scope, &1))
+
+      render_rosters(conn, sheets, gettext("Listes de classe") <> " — " <> year.name)
+    else
+      [] ->
+        conn
+        |> put_flash(:info, gettext("Aucune classe cette année : pas de liste à imprimer."))
+        |> redirect(to: ~p"/school/classes")
+
+      _ ->
+        redirect(conn, to: ~p"/school")
+    end
+  end
+
+  # One class's page: its own header and language, as the single print.
+  defp roster_sheet(scope, cg) do
+    template = ReportCards.template(scope, cg)
+    year = Organization.class_year(scope, cg)
+    form_master = Enrollment.form_master(scope, cg)
+
+    %{
+      cg: cg,
+      year: year && year.name,
+      form_master: form_master && User.display_name(form_master),
+      rows: numbered(Enrollment.list_roster(scope, cg)),
+      template: template,
+      lang: template.language,
+      head_name: ReportCards.head_name(scope)
+    }
+  end
+
+  defp render_rosters(conn, sheets, title) do
+    conn
+    |> put_layout(false)
+    |> put_root_layout(false)
+    |> render(:roster, sheets: sheets, title: title)
   end
 
   def working(conn, %{"id" => id}) do

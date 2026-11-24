@@ -133,6 +133,55 @@ defmodule TeacherAssistantWeb.ClassListPrintControllerTest do
     end
   end
 
+  describe "the whole school's official rosters" do
+    test "prints every class of the year, one page each, in class order", %{
+      conn: conn,
+      scope: scope,
+      year: year
+    } do
+      {:ok, cg5} = Enrollment.create_class_group(scope, year, %{label: "5e Q", level: "5ème"})
+      {:ok, _} = Enrollment.add_student(scope, cg5, %{full_name: "Cyr Mbo", sex: :m})
+      classes = Enrollment.list_class_groups(scope, year)
+
+      body = conn |> get(~p"/school/class-lists/print") |> html_response(200)
+
+      assert length(Regex.scan(~r/<section class="sheet/, body)) == length(classes)
+      assert length(Regex.scan(~r/LISTE DE CLASSE/, body)) == length(classes)
+      {awa_at, _} = :binary.match(body, "Awa Ngono")
+      {cyr_at, _} = :binary.match(body, "Cyr Mbo")
+      # 6e before 5e: the school's class order.
+      assert awa_at < cyr_at
+      assert body =~ "Effectif : 2"
+      assert body =~ "Effectif : 1"
+    end
+
+    test "a discipline master may print it", %{conn: conn, scope: scope, workspace: workspace} do
+      conn =
+        conn
+        |> as_member(scope, workspace, [:discipline_master])
+        |> get(~p"/school/class-lists/print")
+
+      assert html_response(conn, 200) =~ "Awa Ngono"
+    end
+
+    test "a teacher is redirected", %{conn: conn, scope: scope, workspace: workspace} do
+      conn =
+        conn
+        |> as_member(scope, workspace, [:teacher])
+        |> get(~p"/school/class-lists/print")
+
+      assert redirected_to(conn) == ~p"/school"
+    end
+
+    test "it belongs to core" do
+      assert Modules.module_for_controller(
+               TeacherAssistantWeb.ClassListPrintController,
+               :roster_all
+             ) ==
+               :core
+    end
+  end
+
   describe "working list" do
     test "has six empty columns per student and a blank subject line", %{conn: conn, cg: cg} do
       body =
